@@ -6,29 +6,69 @@
   <title>Station 2: Walk-in</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-orange-50 text-gray-800">
-  <div class="max-w-md mx-auto min-h-screen shadow-md bg-white relative p-6">
+<body class="bg-gray-100 text-gray-800 bg-cover bg-center bg-fixed" style="background-image: url('bg.png');">
+  <!-- พื้นหลังใส ไม่มีสีขาว -->
+  <div class="max-w-md mx-auto min-h-screen relative flex flex-col">
     
-    <div id="view-form">
-      <h2 class="text-2xl font-bold text-orange-700 mb-6 text-center">Station 2: Walk-in</h2>
-      <form id="walkinForm" class="space-y-4 bg-white">
-        <input id="w-name" class="w-full p-3 border rounded-lg bg-gray-50" required placeholder="ชื่อ-นามสกุล *">
-        <input id="w-phone" class="w-full p-3 border rounded-lg bg-gray-50" placeholder="เบอร์โทรศัพท์">
-        <input id="w-email" class="w-full p-3 border rounded-lg bg-gray-50" type="email" placeholder="E-mail">
-        <input id="w-company" class="w-full p-3 border rounded-lg bg-gray-50" placeholder="ชื่อบริษัท">
-        <input id="w-group" class="w-full p-3 border rounded-lg bg-gray-50" placeholder="กลุ่มธุรกิจ">
-        <div class="pt-4">
-           <button type="submit" class="w-full p-4 bg-orange-600 text-white rounded-xl text-lg font-bold shadow-md">Check in & บันทึก</button>
+    <img src="banner.png" alt="Banner" class="w-full h-auto shrink-0 object-cover">
+    
+    <!-- ฟอร์มกรอกข้อมูล ปรับให้อยู่ชิดบน (pt-8) -->
+    <div id="view-form" class="flex-1 flex flex-col pt-8 p-6">
+      <h2 class="text-2xl font-bold text-[#4e2a84] mb-6 text-center bg-white/80 backdrop-blur-sm py-2 rounded-lg inline-block self-center px-6">ลงทะเบียน Walk-in</h2>
+      
+      <form id="walkinForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-[#4e2a84] mb-1 bg-white/70 px-2 rounded w-fit">ชื่อ-นามสกุล</label>
+          <input id="w-name" class="w-full p-3 border border-gray-300 rounded-lg focus:border-[#4e2a84] outline-none shadow-sm bg-white" required placeholder="กรอกชื่อ-นามสกุล">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-[#4e2a84] mb-1 bg-white/70 px-2 rounded w-fit">เบอร์โทรศัพท์</label>
+          <input id="w-phone" type="tel" pattern="[0-9]{9,10}" title="กรุณากรอกตัวเลข 9-10 หลัก" class="w-full p-3 border border-gray-300 rounded-lg focus:border-[#4e2a84] outline-none shadow-sm bg-white" required placeholder="เช่น 0812345678">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-[#4e2a84] mb-1 bg-white/70 px-2 rounded w-fit">E-mail</label>
+          <input id="w-email" type="email" class="w-full p-3 border border-gray-300 rounded-lg focus:border-[#4e2a84] outline-none shadow-sm bg-white" required placeholder="example@email.com">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-[#4e2a84] mb-1 bg-white/70 px-2 rounded w-fit">ชื่อบริษัท</label>
+          <input id="w-company" class="w-full p-3 border border-gray-300 rounded-lg focus:border-[#4e2a84] outline-none shadow-sm bg-white" required placeholder="กรอกชื่อบริษัท">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-[#4e2a84] mb-1 bg-white/70 px-2 rounded w-fit">กลุ่มธุรกิจ</label>
+          <input id="w-group" class="w-full p-3 border border-gray-300 rounded-lg focus:border-[#4e2a84] outline-none shadow-sm bg-white" required placeholder="กรอกกลุ่มธุรกิจ">
+        </div>
+        <div class="pt-6 pb-8">
+           <button type="submit" class="w-full p-4 bg-[#4e2a84] hover:bg-[#3a1f64] text-white rounded-xl text-lg font-bold shadow-lg transition-colors">ตรวจสอบข้อมูล</button>
         </div>
       </form>
     </div>
 
+    <!-- หน้า Summary ยืนยันข้อมูล -->
+    <div id="view-summary" class="flex-1 flex flex-col justify-center p-6" style="display: none;">
+      <h2 class="text-2xl font-bold text-center text-[#4e2a84] mb-6 bg-white/80 py-2 rounded-lg backdrop-blur-sm">กรุณายืนยันข้อมูล</h2>
+      <div class="bg-white p-6 rounded-xl border border-gray-200 mb-8 space-y-3 shadow-lg">
+        <p><span class="font-bold text-[#4e2a84]">ชื่อ:</span> <span id="sum-name" class="font-semibold text-gray-800"></span></p>
+        <p><span class="font-bold text-[#4e2a84]">เบอร์โทร:</span> <span id="sum-phone" class="font-semibold text-gray-800"></span></p>
+        <p><span class="font-bold text-[#4e2a84]">E-mail:</span> <span id="sum-email" class="font-semibold text-gray-800"></span></p>
+        <p><span class="font-bold text-[#4e2a84]">บริษัท:</span> <span id="sum-company" class="font-semibold text-gray-800"></span></p>
+        <p><span class="font-bold text-[#4e2a84]">กลุ่มธุรกิจ:</span> <span id="sum-group" class="font-semibold text-gray-800"></span></p>
+      </div>
+      <div class="space-y-4">
+        <button id="btn-save" class="w-full p-4 bg-[#4e2a84] hover:bg-[#3a1f64] text-white rounded-xl text-xl font-bold shadow-md transition-colors">Check in</button>
+        <button onclick="backToForm()" class="w-full p-4 bg-white hover:bg-gray-50 border border-gray-300 text-gray-800 rounded-xl text-lg font-bold shadow-sm transition-colors">ย้อนกลับเพื่อแก้</button>
+      </div>
+    </div>
+
     <!-- หน้าสำเร็จ -->
-    <div id="view-success" class="absolute inset-0 bg-green-50 p-6 flex flex-col items-center justify-center text-center" style="display: none;">
-      <h1 class="text-3xl font-bold text-green-700 mb-4">บันทึกสำเร็จ</h1>
-      <p id="s-name" class="text-2xl font-bold mb-2">-</p>
-      <p id="s-company" class="text-xl text-gray-700">-</p>
-      <button onclick="resetForm()" class="mt-8 p-3 bg-blue-600 text-white rounded-lg px-8">คนต่อไป (Next)</button>
+    <div id="view-success" class="flex-1 flex flex-col items-center justify-center text-center p-6" style="display: none;">
+      <div class="bg-white/90 p-8 rounded-2xl shadow-lg flex flex-col items-center w-full backdrop-blur-sm">
+        <div class="w-20 h-20 bg-[#4e2a84] rounded-full flex items-center justify-center mb-6 shadow-md">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <h1 class="text-3xl font-bold text-[#4e2a84] mb-4">ยินดีต้อนรับ คุณ</h1>
+        <p id="s-name" class="text-2xl font-bold mb-2 text-gray-800">-</p>
+        <p id="s-company" class="text-xl text-gray-600">-</p>
+      </div>
     </div>
 
   </div>
@@ -37,32 +77,50 @@
     import { db } from './firebase-config.js';
     import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
-    document.getElementById('walkinForm').addEventListener('submit', async (e) => {
+    let tempFormData = {};
+
+    document.getElementById('walkinForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const newData = {
+      tempFormData = {
         fullName: document.getElementById('w-name').value,
         phone: document.getElementById('w-phone').value,
         email: document.getElementById('w-email').value,
         company: document.getElementById('w-company').value,
         businessGroup: document.getElementById('w-group').value,
         status: 'checked_in',
-        isWalkIn: true, 
-        checkInTime: serverTimestamp()
+        isWalkIn: true
       };
-      
-      await addDoc(collection(db, "attendees"), newData);
-      
-      document.getElementById('s-name').innerText = newData.fullName;
-      document.getElementById('s-company').innerText = newData.company || '-';
+
+      document.getElementById('sum-name').innerText = tempFormData.fullName;
+      document.getElementById('sum-phone').innerText = tempFormData.phone;
+      document.getElementById('sum-email').innerText = tempFormData.email;
+      document.getElementById('sum-company').innerText = tempFormData.company;
+      document.getElementById('sum-group').innerText = tempFormData.businessGroup;
+
       document.getElementById('view-form').style.display = 'none';
-      document.getElementById('view-success').style.display = 'flex';
+      document.getElementById('view-summary').style.display = 'flex';
     });
 
-    window.resetForm = () => {
-      document.getElementById('walkinForm').reset();
-      document.getElementById('view-success').style.display = 'none';
-      document.getElementById('view-form').style.display = 'block';
+    window.backToForm = () => {
+      document.getElementById('view-summary').style.display = 'none';
+      document.getElementById('view-form').style.display = 'flex';
     };
+
+    document.getElementById('btn-save').addEventListener('click', async () => {
+      document.getElementById('btn-save').disabled = true;
+      document.getElementById('btn-save').innerText = 'กำลังบันทึก...';
+      
+      await addDoc(collection(db, "attendees"), {
+        ...tempFormData,
+        checkInTime: serverTimestamp()
+      });
+      
+      document.getElementById('s-name').innerText = tempFormData.fullName;
+      document.getElementById('s-company').innerText = `บริษัท ${tempFormData.company}`;
+      
+      document.getElementById('view-summary').style.display = 'none';
+      document.getElementById('view-success').style.display = 'flex';
+    });
   </script>
 </body>
 </html>

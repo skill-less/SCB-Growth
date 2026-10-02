@@ -70,6 +70,17 @@ th:hover{color:var(--ink)}
 .dlg{background:var(--card);border-radius:16px;padding:22px;width:100%;max-width:720px;max-height:92vh;overflow:auto}
 textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:16px;resize:vertical}
 .hint{color:var(--mute);font-size:14px;margin:8px 0}
+body{background-image:url(bg.png);background-size:cover;background-position:center;background-attachment:fixed;background-repeat:no-repeat}
+.banner{max-width:560px;margin:0 auto;padding:12px 12px 0}
+.banner img{display:block;width:100%;height:auto;border-radius:16px}
+.wrap{background:color-mix(in srgb,var(--bg) 92%,transparent);border-radius:20px;margin:12px auto;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.hero{min-height:70vh}
+.welcome{position:fixed;inset:0;z-index:5;min-height:0;overflow:auto}
+.sr{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center}
+.drop.over{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,transparent)}
+.err{color:var(--red);font-size:14px;margin:4px 0 0}
+input[aria-invalid=true]{border-color:var(--red)}
 .demo{background:var(--gold);color:#241a00;font-size:14px;text-align:center;padding:5px}
 @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
@@ -78,6 +89,7 @@ textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid var(--line
 </head>
 <body>
 <div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น — ใส่ค่า firebaseConfig ในไฟล์เพื่อใช้งานจริง</div>
+<header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -127,7 +139,6 @@ if (useFB) {
     bulk(list){ list.forEach((g,i) => store["i"+Date.now()+i] = g); save(); return Promise.resolve(); }
   };
 }
-DB.sub(list => { guests = list; if (view.name === "search") render(); });
 
 /* ============ Helpers ============ */
 const $ = s => document.querySelector(s);
@@ -140,7 +151,7 @@ const norm = s => String(s||"").toLowerCase().replace(/\s+/g," ").trim();
 /* ============ Router ============ */
 let view = {name:"landing"}, wTimer;
 function go(name, data){ clearTimeout(wTimer); view = {name, ...data}; render(); window.scrollTo(0,0); }
-function render(){ ({landing,search,confirm:confirmV,edit,editSum,welcome}[view.name])(); }
+function render(){ ({landing,search,confirm:confirmV,welcome}[view.name])(); }
 const A = html => { $("#app").innerHTML = html; };
 
 /* ---- Landing ---- */
@@ -154,27 +165,28 @@ function landing(){
   $("#enter").onclick = () => go("search",{q:""});
 }
 
-/* ---- Search ---- */
+/* ---- Search (ค้นหาจากชื่อเท่านั้น ไม่ auto complete: กดปุ่มหรือ Enter) ---- */
 function search(){
-  const q = view.q || "";
+  const q = view.q || "", sq = view.sq || "";
   A(`<div class="wrap">
     <div class="top"><button class="link" id="back">← กลับ</button><span></span></div>
     <h2>ค้นหาชื่อของคุณ</h2>
-    <input id="q" type="search" autocomplete="off" placeholder="พิมพ์ชื่อ หรือ ชื่อบริษัท" value="${esc(q)}">
+    <div class="row" style="flex-wrap:nowrap"><input id="q" type="text" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์ชื่อของคุณ" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
     <div id="res"></div>
   </div>`);
   const inp = $("#q"); inp.focus(); inp.setSelectionRange(q.length,q.length);
   $("#back").onclick = () => go("landing");
-  const draw = () => {
-    view.q = inp.value; const n = norm(inp.value); const box = $("#res");
-    if (!n) { box.innerHTML = ""; return; }
-    const hits = guests.filter(g => norm(g.name).includes(n) || norm(g.company).includes(n))
-      .sort((a,b)=> (a.company||"").localeCompare(b.company||"","th") || full(a).localeCompare(full(b),"th")).slice(0,50);
-    box.innerHTML = hits.length ? `<div class="list" role="listbox">${hits.map(g => `<button class="item" data-id="${g.id}"><span><b>${esc(full(g))}</b><small>${esc(g.company||"-")}</small></span>${g.checkedIn?'<span class="tag ok">เช็คอินแล้ว</span>':""}</button>`).join("")}</div>`
-      : `<p class="sub" style="margin-top:14px">ไม่พบรายชื่อที่ตรงกับ “${esc(inp.value)}”</p>`;
-    box.querySelectorAll(".item").forEach(b => b.onclick = () => go("confirm",{id:b.dataset.id}));
-  };
-  inp.oninput = draw; draw();
+  const run = () => { view.q = inp.value; view.sq = inp.value.trim(); search(); };
+  inp.oninput = () => { view.q = inp.value; };
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); run(); } };
+  $("#go").onclick = run;
+  const n = norm(sq); if (!n) return;
+  const hits = guests.filter(g => norm(g.name).includes(n))
+    .sort((a,b) => full(a).localeCompare(full(b),"th") || (a.company||"").localeCompare(b.company||"","th")).slice(0,50);
+  const box = $("#res");
+  box.innerHTML = hits.length ? `<div class="list">${hits.map(g => `<button class="item" data-id="${g.id}"><span><b>${esc(full(g))}</b><small>${esc(g.company||"-")}</small></span>${g.checkedIn?'<span class="tag ok">เช็คอินแล้ว</span>':""}</button>`).join("")}</div>`
+    : `<p class="sub" style="margin-top:14px">ไม่พบชื่อ “${esc(sq)}” กรุณาตรวจสอบการสะกด หรือติดต่อเจ้าหน้าที่ลงทะเบียน</p>`;
+  box.querySelectorAll(".item").forEach(b => b.onclick = () => go("confirm",{id:b.dataset.id}));
 }
 
 /* ---- Confirm ---- */
@@ -184,10 +196,9 @@ function confirmV(){
     ${g.checkedIn ? `<div class="warn">คุณเช็คอินไปแล้วเมื่อ ${esc(fmt(g.checkedInAt))}</div>` : ""}
     <dl><dt>ชื่อ-นามสกุล</dt><dd>${esc(g.name)}</dd><dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd></dl>
     <button class="btn block" id="ci">Check in</button>
-    <div class="row" style="margin-top:10px"><button class="btn ghost" id="ed">แก้ไขข้อมูล</button><button class="btn danger" id="cn">Cancel</button></div>
+    <button class="btn danger block" id="cn" style="margin-top:10px">Cancel</button>
   </div></div>`);
   $("#ci").onclick = () => checkIn(g.id, {});
-  $("#ed").onclick = () => go("edit",{id:g.id, draft:{name:g.name||"",phone:g.phone||"",email:g.email||""}});
   $("#cn").onclick = () => go("search",{q:""});
 }
 async function checkIn(id, patch){
@@ -197,41 +208,18 @@ async function checkIn(id, patch){
   catch(e){ toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
 }
 
-/* ---- Edit ---- */
-function edit(){
-  const d = view.draft;
-  A(`<div class="wrap"><h2>แก้ไขข้อมูล</h2><div class="card">
-    <label>ชื่อ-นามสกุล</label><input id="f1" value="${esc(d.name)}">
-    <label>เบอร์โทรศัพท์</label><input id="f3" type="tel" inputmode="tel" value="${esc(d.phone)}">
-    <label>E-mail</label><input id="f4" type="email" inputmode="email" value="${esc(d.email)}">
-    <div class="row" style="margin-top:20px"><button class="btn ghost" id="bk">ย้อนกลับ</button><button class="btn" id="ok">ยืนยัน</button></div>
-  </div></div>`);
-  $("#bk").onclick = () => go("confirm",{id:view.id});
-  $("#ok").onclick = () => go("editSum",{id:view.id, draft:{name:$("#f1").value.trim(),phone:$("#f3").value.trim(),email:$("#f4").value.trim()}});
-}
-function editSum(){
-  const d = view.draft, g = guests.find(x => x.id === view.id) || {};
-  const row = (l,k) => `<dt>${l}</dt><dd>${esc(d[k]||"-")}${(g[k]||"")!==d[k]?' <span class="tag no">แก้ไข</span>':""}</dd>`;
-  A(`<div class="wrap"><h2>ตรวจสอบข้อมูลที่แก้ไข</h2><div class="card">
-    <dl>${row("ชื่อ-นามสกุล","name")}<dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd>${row("เบอร์โทรศัพท์","phone")}${row("E-mail","email")}</dl>
-    <button class="btn block" id="sv">Save และ Check in</button>
-    <button class="btn ghost block" id="bk" style="margin-top:10px">กลับไปแก้ไข</button>
-  </div></div>`);
-  $("#bk").onclick = () => go("edit",{id:view.id,draft:d});
-  $("#sv").onclick = () => checkIn(view.id, d);
-}
-
 /* ---- Welcome ---- */
 function welcome(){
   const g = view.g;
   A(`<div class="welcome"><div class="tick" aria-hidden="true">✓</div>
     <h1>ยินดีต้อนรับ คุณ${esc(full(g))}</h1>
-    ${g.company ? `<p>บริษัท ${esc(g.company)}</p>` : "<p></p>"}
+    ${g.company ? `<p>${/^(บริษัท|บจก|บมจ|หจก|ห้างหุ้นส่วน|ธนาคาร)/.test(g.company)?"":"บริษัท "}${esc(g.company)}</p>` : "<p></p>"}
     <button class="btn" id="dn">เสร็จสิ้น</button></div>`);
   $("#dn").onclick = () => go("landing");
   wTimer = setTimeout(() => go("landing"), 7000);
 }
 
+DB.sub(list => { guests = list; if (view.name === "search") render(); });
 render();
 </script>
 </body>

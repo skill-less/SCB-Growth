@@ -66,6 +66,17 @@ th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);whit
 th{cursor:pointer;user-select:none;color:var(--mute);font-weight:500;position:sticky;top:0;background:var(--card)}
 th:hover{color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:12px;z-index:9}
+body{background-image:url(bg.png);background-size:cover;background-position:center;background-attachment:fixed;background-repeat:no-repeat}
+.banner{max-width:560px;margin:0 auto;padding:12px 12px 0}
+.banner img{display:block;width:100%;height:auto;border-radius:16px}
+.wrap{background:color-mix(in srgb,var(--bg) 92%,transparent);border-radius:20px;margin:12px auto;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.hero{min-height:70vh}
+.welcome{position:fixed;inset:0;z-index:5;min-height:0;overflow:auto}
+.sr{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center}
+.drop.over{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,transparent)}
+.err{color:var(--red);font-size:14px;margin:4px 0 0}
+input[aria-invalid=true]{border-color:var(--red)}
 .demo{background:var(--gold);color:#241a00;font-size:14px;text-align:center;padding:5px}
 @media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -73,6 +84,7 @@ th:hover{color:var(--ink)}
 </head>
 <body>
 <div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น</div>
+<header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
 <div id="toast" class="toast" hidden></div>
 <script>
@@ -110,27 +122,49 @@ if (firebaseConfig.apiKey && firebaseConfig.databaseURL) {
 }
 
 /* ===== Views ===== */
-let wTimer;
+let wTimer, draft = {}, errs = {};
+const REQ = ["name","phone","email","company","group"];
+const co = c => c ? (/^(บริษัท|บจก|บมจ|หจก|ห้างหุ้นส่วน|ธนาคาร)/.test(c) ? "" : "บริษัท ") + c : "";
+function normPhone(v){ let d = v.replace(/[\s\-().]/g,""); if (/^\+?66\d{8,9}$/.test(d)) d = "0"+d.replace(/^\+?66/,""); return d; }
+function validate(o){
+  const e = {};
+  if (o.name.length < 2) e.name = "กรุณากรอกชื่อ-นามสกุล";
+  if (!o.phone) e.phone = "กรุณากรอกเบอร์โทรศัพท์"; else if (!/^0\d{8,9}$/.test(normPhone(o.phone))) e.phone = "รูปแบบเบอร์โทรไม่ถูกต้อง เช่น 0812345678";
+  if (!o.email) e.email = "กรุณากรอก E-mail"; else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(o.email)) e.email = "รูปแบบ E-mail ไม่ถูกต้อง เช่น name@company.com";
+  if (!o.company) e.company = "กรุณากรอกชื่อบริษัท";
+  if (!o.group) e.group = "กรุณากรอกกลุ่มธุรกิจ";
+  return e;
+}
 function form(){
   clearTimeout(wTimer);
-  $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียนแขกหน้างาน</h1><p class="sub">${esc(EVENT_NAME)} — กรอกเท่าที่มีได้ ไม่บังคับทุกช่อง</p><div class="card">
-    ${FIELDS.map(([k,l]) => `<label for="n_${k}">${l}</label><input id="n_${k}" ${k==="phone"?'type="tel" inputmode="tel"':k==="email"?'type="email" inputmode="email"':""} autocomplete="off">`).join("")}
-    <button class="btn block" id="sv" style="margin-top:22px">บันทึกและ Check in</button></div></div>`;
-  $("#n_name").focus();
-  $("#sv").onclick = async () => {
-    const o = {walkIn:true, checkedIn:true, checkedInAt:Date.now()};
-    FIELDS.forEach(([k]) => o[k] = $("#n_"+k).value.trim());
-    if (!FIELDS.some(([k]) => o[k])) return toast("กรุณากรอกอย่างน้อย 1 ช่อง");
-    $("#sv").disabled = true;
-    try { welcome(await DB.add(o)); } catch(e){ console.error(e); $("#sv").disabled = false; toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
+  const attr = k => k==="phone" ? 'type="tel" inputmode="tel"' : k==="email" ? 'type="email" inputmode="email"' : 'type="text"';
+  $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียนแขกหน้างาน</h1><p class="sub">${esc(EVENT_NAME)} — กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
+    ${FIELDS.map(([k,l]) => `<label for="n_${k}">${l} <span style="color:var(--red)">*</span></label><input id="n_${k}" ${attr(k)} autocomplete="off" value="${esc(draft[k]||"")}" ${errs[k]?'aria-invalid="true"':""}>${errs[k]?`<p class="err" role="alert">${errs[k]}</p>`:""}`).join("")}
+    <button class="btn block" id="nx" style="margin-top:22px">ตรวจสอบข้อมูล</button></div></div>`;
+  const first = REQ.find(k => errs[k]); $("#n_"+(first||"name")).focus();
+  $("#nx").onclick = () => {
+    FIELDS.forEach(([k]) => draft[k] = $("#n_"+k).value.trim());
+    errs = validate(draft);
+    if (Object.keys(errs).length) return form();
+    draft.phone = normPhone(draft.phone); summary();
+  };
+}
+function summary(){
+  $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ยืนยันข้อมูล</h1><p class="sub">กรุณาตรวจสอบความถูกต้องก่อน Check in</p><div class="card">
+    <dl>${FIELDS.map(([k,l]) => `<dt>${l}</dt><dd>${esc(draft[k])}</dd>`).join("")}</dl>
+    <div class="row"><button class="btn ghost" id="bk">ย้อนกลับ</button><button class="btn" id="ci">Check in</button></div></div></div>`;
+  $("#bk").onclick = () => { errs = {}; form(); };
+  $("#ci").onclick = async () => {
+    $("#ci").disabled = true; $("#bk").disabled = true;
+    const o = {...draft, walkIn:true, checkedIn:true, checkedInAt:Date.now()};
+    try { const g = await DB.add(o); welcome(g); }
+    catch(e){ console.error(e); $("#ci").disabled = false; $("#bk").disabled = false; toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
   };
 }
 function welcome(g){
   $("#app").innerHTML = `<div class="welcome"><div class="tick" aria-hidden="true">✓</div>
-    <h1>ยินดีต้อนรับ คุณ${esc(g.name || "")}</h1><p>${g.company ? "บริษัท "+esc(g.company) : ""}</p>
-    <button class="btn" id="dn">ลงทะเบียนคนถัดไป</button></div>`;
-  $("#dn").onclick = form;
-  wTimer = setTimeout(form, 7000);
+    <h1>ยินดีต้อนรับ คุณ${esc(g.name)}</h1><p>${esc(co(g.company))}</p></div>`;
+  wTimer = setTimeout(() => { draft = {}; errs = {}; form(); }, 7000);
 }
 form();
 </script>

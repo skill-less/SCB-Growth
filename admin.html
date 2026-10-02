@@ -71,6 +71,17 @@ th:hover{color:var(--ink)}
 .dlg{background:var(--card);border-radius:16px;padding:22px;width:100%;max-width:720px;max-height:92vh;overflow:auto}
 textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:16px;resize:vertical}
 .hint{color:var(--mute);font-size:14px;margin:8px 0}
+body{background-image:url(bg.png);background-size:cover;background-position:center;background-attachment:fixed;background-repeat:no-repeat}
+.banner{max-width:1100px;margin:0 auto;padding:12px 12px 0}
+.banner img{display:block;width:100%;height:auto;border-radius:16px}
+.wrap{background:color-mix(in srgb,var(--bg) 92%,transparent);border-radius:20px;margin:12px auto;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.hero{min-height:70vh}
+.welcome{position:fixed;inset:0;z-index:5;min-height:0;overflow:auto}
+.sr{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center}
+.drop.over{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,transparent)}
+.err{color:var(--red);font-size:14px;margin:4px 0 0}
+input[aria-invalid=true]{border-color:var(--red)}
 .demo{background:var(--gold);color:#241a00;font-size:14px;text-align:center;padding:5px}
 @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
@@ -79,6 +90,7 @@ textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid var(--line
 </head>
 <body>
 <div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น</div>
+<header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
 <div id="modal" hidden></div>
 <div id="toast" class="toast" hidden></div>
@@ -108,7 +120,10 @@ if (useFB) {
     sub(cb){ ref.on("value", s => { const v = s.val() || {}; cb(Object.entries(v).map(([id,g]) => ({...g,id}))); }, e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); }); },
     update(id, o){ return ref.child(id).update(o); },
     add(o){ const k = ref.push().key; return ref.child(k).set(o).then(()=>k); },
-    bulk(list){ const m = {}; list.forEach(g => m[ref.push().key] = g); return ref.update(m); }
+    bulk(list){ const m = {}; list.forEach(g => m[ref.push().key] = g); return ref.update(m); },
+    async reset(kind){ if (kind==="all") return ref.set(null);
+      const m = {}; guests.forEach(g => { if (kind==="walkin") { if (g.walkIn) m[g.id] = null; } else { m[g.id+"/checkedIn"] = false; m[g.id+"/checkedInAt"] = null; } });
+      return Object.keys(m).length ? ref.update(m) : null; }
   };
 } else {
   document.getElementById("demo").hidden = false;
@@ -125,7 +140,8 @@ if (useFB) {
     sub(cb){ emit = () => cb(Object.entries(store).map(([id,g]) => ({...g,id}))); emit(); },
     update(id,o){ store[id] = {...store[id],...o}; save(); return Promise.resolve(); },
     add(o){ const k = "g"+Date.now()+Math.random().toString(36).slice(2,6); store[k] = o; save(); return Promise.resolve(k); },
-    bulk(list){ list.forEach((g,i) => store["i"+Date.now()+i] = g); save(); return Promise.resolve(); }
+    bulk(list){ list.forEach((g,i) => store["i"+Date.now()+i] = g); save(); return Promise.resolve(); },
+    reset(kind){ if (kind==="all") store = {}; else Object.keys(store).forEach(id => { if (kind==="walkin") { if (store[id].walkIn) delete store[id]; } else store[id] = {...store[id], checkedIn:false, checkedInAt:null}; }); save(); return Promise.resolve(); }
   };
 }
 
@@ -150,7 +166,7 @@ function dash(){
   const cols = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]].concat(tab==="in"?[["checkedInAt","เวลาเช็คอิน"]]:[]);
   A(`<div class="wrap wide">
     <div class="top"><h1 style="margin:0;font-size:26px">Dashboard</h1><div class="row" style="flex:none">
-      <button class="btn ghost sm" id="imp">+ เพิ่มรายชื่อ</button><select id="expk" aria-label="ประเภทข้อมูลที่ export" style="width:auto;padding:6px 10px;font-size:15px;min-height:38px"><option value="all">ทั้งหมด (แยก sheet)</option><option value="in">เช็คอินแล้ว</option><option value="out">ยังไม่มา</option><option value="walk">Walk-in เท่านั้น</option></select><button class="btn sm" id="exp">Export Excel</button></div></div>
+      <button class="btn ghost sm" id="imp">+ เพิ่มรายชื่อ</button><select id="expk" aria-label="ประเภทข้อมูลที่ export" style="width:auto;padding:6px 10px;font-size:15px;min-height:38px"><option value="all">ทั้งหมด (แยก sheet)</option><option value="in">เช็คอินแล้ว</option><option value="out">ยังไม่มา</option><option value="walk">Walk-in เท่านั้น</option></select><button class="btn sm" id="exp">Export Excel</button><button class="btn danger sm" id="rst">Reset ข้อมูล</button></div></div>
     <div class="stats"><div class="stat"><span>รวมทั้งหมด</span><b>${guests.length}</b></div><div class="stat"><span>Check in แล้ว</span><b style="color:var(--ok)">${nIn}</b></div><div class="stat"><span>ยังไม่ Check in</span><b>${guests.length-nIn}</b></div><div class="stat" id="wst" style="cursor:pointer"><span>แขก Walk-in</span><b style="color:var(--brand)">${nW}</b></div></div>
     <div class="bar" aria-label="${pct}%"><i style="width:${pct}%"></i></div>
     <div class="row" style="align-items:center;margin-bottom:12px">
@@ -158,7 +174,7 @@ function dash(){
       <input id="flt" type="search" placeholder="กรองรายชื่อ" value="${esc(filt)}" style="max-width:280px;padding:9px 14px;font-size:16px">
     </div>
     <div class="tw"><table><thead><tr>${cols.map(([k,l]) => `<th data-k="${k}">${l}${sortK===k?(sortD>0?" ▲":" ▼"):""}</th>`).join("")}<th></th></tr></thead>
-    <tbody>${rows.map(g => `<tr>${cols.map(([k]) => `<td>${k==="checkedInAt"?esc(fmt(g[k])):esc(g[k]||"")}</td>`).join("")}<td>${tab==="in"?`<button class="btn ghost sm" data-un="${g.id}">ยกเลิกเช็คอิน</button>`:`<button class="btn sm" data-ci="${g.id}">เช็คอินให้</button>`}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--mute)">ไม่มีรายการ</td></tr>`}</tbody></table></div>
+    <tbody>${rows.map(g => `<tr>${cols.map(([k]) => `<td>${k==="checkedInAt"?esc(fmt(g[k])):esc(g[k]||"")}</td>`).join("")}<td style="white-space:nowrap"><button class="btn ghost sm" data-ed="${g.id}">แก้ไข</button> ${tab==="in"?`<button class="btn ghost sm" data-un="${g.id}">ยกเลิกเช็คอิน</button>`:`<button class="btn sm" data-ci="${g.id}">เช็คอินให้</button>`}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--mute)">ไม่มีรายการ</td></tr>`}</tbody></table></div>
   </div>`);
   document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.t; dash(); });
   $("#wst").onclick = () => { wOnly = !wOnly; dash(); };
@@ -167,8 +183,10 @@ function dash(){
   const f = $("#flt"); f.oninput = () => { filt = f.value; const p = f.selectionStart; dash(); const n=$("#flt"); n.focus(); n.setSelectionRange(p,p); };
   document.querySelectorAll("[data-un]").forEach(b => b.onclick = () => confirm("ยกเลิกการเช็คอินของรายการนี้?") && DB.update(b.dataset.un,{checkedIn:false,checkedInAt:null}));
   document.querySelectorAll("[data-ci]").forEach(b => b.onclick = () => DB.update(b.dataset.ci,{checkedIn:true,checkedInAt:Date.now()}));
+  document.querySelectorAll("[data-ed]").forEach(b => b.onclick = () => openEdit(b.dataset.ed));
   $("#exp").onclick = () => exportXlsx($("#expk").value);
   $("#imp").onclick = openAdd;
+  $("#rst").onclick = openReset;
 }
 function exportXlsx(kind="all"){
   const map = g => ({"ลำดับ":g.seq||"","ชื่อ-นามสกุล":g.name||"","เบอร์โทรศัพท์":g.phone||"","E-mail":g.email||"","ชื่อบริษัท":g.company||"","กลุ่มธุรกิจ":g.group||"","สถานะ":g.checkedIn?"เช็คอินแล้ว":"ยังไม่มา","เวลาเช็คอิน":g.checkedInAt?fmt(g.checkedInAt):"","แขกหน้างาน":g.walkIn?"ใช่":""});
@@ -201,12 +219,66 @@ function parseRows(aoa){
     if (/^[1-9]\d{8}$/.test(o.phone)) o.phone = "0"+o.phone; return o; }).filter(o => o.name || o.company);
 }
 const toAoa = wb => XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:"", raw:false});
+function openEdit(id){
+  const g = guests.find(x => x.id === id); if (!g) return;
+  const m = $("#modal"), F = [["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]];
+  m.hidden = false;
+  m.innerHTML = `<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="แก้ไขข้อมูลแขก" style="max-width:520px">
+    <div class="top"><h2 style="margin:0">แก้ไขข้อมูลแขก${g.seq?` (ลำดับ ${esc(g.seq)})`:""}</h2><button class="btn ghost sm" id="mx">ปิด</button></div>
+    ${F.map(([k,l]) => `<label for="e_${k}">${l}</label><input id="e_${k}" value="${esc(g[k]||"")}" autocomplete="off" ${k==="phone"?'type="tel" inputmode="tel"':k==="email"?'type="email" inputmode="email"':""}>`).join("")}
+    <div class="row" style="margin-top:20px"><button class="btn ghost" id="ec">ยกเลิก</button><button class="btn" id="es">บันทึก</button></div></div></div>`;
+  const close = () => { m.hidden = true; m.innerHTML = ""; document.removeEventListener("keydown", esc2); };
+  const esc2 = e => e.key === "Escape" && close();
+  document.addEventListener("keydown", esc2);
+  m.querySelector(".ov").onclick = e => e.target.classList.contains("ov") && close();
+  $("#mx").onclick = $("#ec").onclick = close;
+  $("#es").onclick = async () => {
+    const o = {}; F.forEach(([k]) => o[k] = $("#e_"+k).value.trim());
+    if (!o.name && !o.company) return toast("กรุณากรอกชื่อ-นามสกุลหรือชื่อบริษัท");
+    try { await DB.update(id, o); toast("บันทึกการแก้ไขแล้ว"); close(); } catch(e){ console.error(e); toast("บันทึกไม่สำเร็จ"); }
+  };
+  $("#e_name").focus();
+}
+function openReset(){
+  const m = $("#modal"); m.hidden = false;
+  const close = () => { m.hidden = true; m.innerHTML = ""; document.removeEventListener("keydown", esc2); };
+  const esc2 = e => e.key === "Escape" && close();
+  document.addEventListener("keydown", esc2);
+  const opts = {
+    checkin:["ล้างสถานะ Check in ทั้งหมด","คงรายชื่อไว้ทั้งหมด (รวมแขก walk-in) แต่ทุกคนกลับเป็น ยังไม่ Check in เหมาะกับการซ้อมก่อนวันงาน"],
+    walkin:["ลบเฉพาะแขก Walk-in","รายชื่อที่นำเข้าไว้ยังอยู่ครบ"],
+    all:["ลบรายชื่อทั้งหมด","เริ่มระบบใหม่ ต้องนำเข้ารายชื่อใหม่ทั้งหมด"]
+  };
+  const count = k => k==="walkin" ? guests.filter(g => g.walkIn).length : guests.length;
+  const shell = body => { m.innerHTML = `<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Reset ข้อมูล" style="max-width:520px"><div class="top"><h2 style="margin:0">Reset ข้อมูล</h2><button class="btn ghost sm" id="mx">ปิด</button></div>${body}</div></div>`;
+    m.querySelector(".ov").onclick = e => e.target.classList.contains("ov") && close(); $("#mx").onclick = close; };
+  const step1 = () => {
+    shell(`<p class="hint">เลือกสิ่งที่ต้องการ Reset (ยังไม่มีการลบจนกว่าจะยืนยันในขั้นตอนถัดไป)</p>
+      ${Object.entries(opts).map(([k,[t,d]],i) => `<label style="display:flex;gap:10px;align-items:flex-start;color:var(--ink);font-size:17px;margin:12px 0"><input type="radio" name="rk" value="${k}" ${i===0?"checked":""} style="width:auto;margin-top:6px"><span><b>${t}</b><br><small style="color:var(--mute)">${d}</small></span></label>`).join("")}
+      <p class="hint">แนะนำให้ Export Excel สำรองข้อมูลก่อน <button class="link" id="bk">Export ทั้งหมดตอนนี้</button></p>
+      <div class="row" style="margin-top:16px"><button class="btn ghost" id="c1">ยกเลิก</button><button class="btn" id="n1">ถัดไป</button></div>`);
+    $("#c1").onclick = close; $("#bk").onclick = () => exportXlsx("all");
+    $("#n1").onclick = () => step2(m.querySelector("input[name=rk]:checked").value);
+  };
+  const step2 = k => {
+    const n = count(k);
+    shell(`<div class="warn"><b>${opts[k][0]}</b><br>มีผลกับ ${n} รายการ และไม่สามารถกู้คืนได้</div>
+      <label for="cf">พิมพ์คำว่า <b>RESET</b> เพื่อยืนยัน</label><input id="cf" autocomplete="off" placeholder="RESET">
+      <div class="row" style="margin-top:20px"><button class="btn ghost" id="b2">ย้อนกลับ</button><button class="btn" id="ok" disabled style="background:var(--red)">ยืนยัน Reset</button></div>`);
+    const cf = $("#cf"), ok = $("#ok"); cf.focus();
+    cf.oninput = () => { ok.disabled = cf.value.trim() !== "RESET"; };
+    $("#b2").onclick = step1;
+    ok.onclick = async () => { ok.disabled = true;
+      try { await DB.reset(k); toast("Reset ข้อมูลเรียบร้อย"); close(); } catch(e){ console.error(e); toast("Reset ไม่สำเร็จ"); ok.disabled = false; } };
+  };
+  step1();
+}
 function openAdd(){
   const m = $("#modal"); m.hidden = false; let mode = "file", pending = [], skip = true;
   m.innerHTML = `<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="เพิ่มรายชื่อ">
     <div class="top"><h2 style="margin:0">เพิ่มรายชื่อ</h2><button class="btn ghost sm" id="mx">ปิด</button></div>
     <div class="tabs"><button class="tab" data-m="file" aria-selected="true">อัปโหลดไฟล์ Excel / CSV</button><button class="tab" data-m="paste" aria-selected="false">วางรายชื่อ (Paste)</button></div>
-    <div id="pf"><input type="file" id="file" accept=".xlsx,.xls,.csv"><p class="hint">หัวคอลัมน์ตามเอกสารลงทะเบียน: ลำดับ, ชื่อ-นามสกุล, เบอร์โทรศัพท์, E-mail, ชื่อบริษัท, กลุ่มธุรกิจ (ไฟล์ CSV ควรบันทึกเป็น UTF-8)</p></div>
+    <div id="pf"><div class="drop" id="dz"><label class="btn" for="file" id="pick" tabindex="0" role="button">เลือกไฟล์ Excel / CSV</label><input type="file" id="file" class="sr" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"><p class="hint" id="fn" style="margin:10px 0 0">หรือลากไฟล์มาวางที่นี่</p></div><p class="hint">หัวคอลัมน์ตามเอกสารลงทะเบียน: ลำดับ, ชื่อ-นามสกุล, เบอร์โทรศัพท์, E-mail, ชื่อบริษัท, กลุ่มธุรกิจ (ไฟล์ CSV ควรบันทึกเป็น UTF-8)</p></div>
     <div id="pp" hidden><textarea id="ta" rows="8" placeholder="คัดลอกรายชื่อจาก Excel มาวางที่นี่ 1 คนต่อ 1 บรรทัด&#10;ลำดับ, ชื่อ-นามสกุล, เบอร์โทรศัพท์, E-mail, ชื่อบริษัท, กลุ่มธุรกิจ"></textarea>
       <p class="hint">รองรับข้อมูลที่คัดลอกจาก Excel (คั่นด้วย Tab) หรือคั่นด้วยจุลภาค จะมีแถวหัวคอลัมน์หรือไม่ก็ได้ ถ้าวางแค่ชื่ออย่างเดียวก็ได้</p></div>
     <div id="pv"></div></div></div>`;
@@ -236,12 +308,28 @@ function openAdd(){
     };
   }
   const set = list => { pending = list; if (!list.length && ($("#ta").value.trim() || $("#file").value)) $("#pv").innerHTML = `<p class="hint">ไม่พบรายชื่อที่นำเข้าได้ ตรวจสอบหัวคอลัมน์หรือรูปแบบข้อมูล</p>`; else pv(); };
-  $("#file").onchange = e => {
-    const f = e.target.files[0]; if (!f) return;
+  const handle = f => {
+    if (!f) return;
+    const box = $("#pv"), bad = t => box.innerHTML = `<p class="hint" style="color:var(--red)">${t}</p>`;
+    $("#fn").textContent = f.name; pending = []; box.innerHTML = `<p class="hint">กำลังอ่านไฟล์ ${esc(f.name)} ...</p>`;
+    if (typeof XLSX === "undefined") return bad("โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ (ตรวจสอบอินเทอร์เน็ตแล้วโหลดหน้าใหม่) หรือใช้แท็บ วางรายชื่อ แทน");
     const r = new FileReader(), csv = /\.csv$/i.test(f.name);
-    r.onload = ev => { try { set(parseRows(toAoa(csv ? XLSX.read(ev.target.result,{type:"string",raw:true}) : XLSX.read(ev.target.result,{type:"array"})))); } catch(err){ console.error(err); toast("อ่านไฟล์ไม่ได้"); } };
+    r.onerror = () => bad("อ่านไฟล์ไม่ได้ กรุณาลองเลือกไฟล์ใหม่");
+    r.onload = ev => {
+      try {
+        const wb = csv ? XLSX.read(ev.target.result,{type:"string",raw:true}) : XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
+        pending = parseRows(toAoa(wb));
+        if (!pending.length) bad("ไม่พบรายชื่อที่นำเข้าได้ ตรวจสอบว่าไฟล์มีหัวคอลัมน์ เช่น ชื่อ-นามสกุล, ชื่อบริษัท"); else pv();
+      } catch(err){ console.error(err); bad("อ่านไฟล์ไม่ได้: "+esc(err.message)); }
+    };
     csv ? r.readAsText(f,"utf-8") : r.readAsArrayBuffer(f);
   };
+  $("#file").onchange = e => { handle(e.target.files[0]); e.target.value = ""; };
+  $("#pick").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#file").click(); } };
+  const dz = $("#dz");
+  ["dragenter","dragover"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add("over"); }));
+  ["dragleave","drop"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove("over"); }));
+  dz.addEventListener("drop", e => handle(e.dataTransfer.files[0]));
   let tm; $("#ta").oninput = () => { clearTimeout(tm); tm = setTimeout(() => { const t = $("#ta").value.trim(); if (!t) return set([]); try { set(parseRows(toAoa(XLSX.read(t,{type:"string",raw:true})))); } catch(err){ toast("อ่านข้อมูลไม่ได้"); } }, 300); };
 }
 

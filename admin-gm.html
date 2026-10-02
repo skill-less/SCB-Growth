@@ -7,69 +7,109 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 p-6">
-  <div class="max-w-7xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold">Admin Panel</h2>
-      <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow font-bold">Export Excel (ตาม Filter ที่เลือก)</button>
-    </div>
+<body class="bg-gray-100 text-gray-800 bg-cover bg-center bg-fixed" style="background-image: url('bg.png');">
+  <div class="max-w-7xl mx-auto min-h-screen shadow-2xl bg-white/95 backdrop-blur-sm flex flex-col relative">
+    
+    <img src="banner.png" alt="Banner" class="w-full h-48 md:h-64 object-cover shrink-0">
 
-    <!-- สรุปตัวเลข (4 กล่อง) -->
-    <div class="grid grid-cols-4 gap-4 mb-8 text-center">
-      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500"><p class="text-sm text-gray-500">รวมทั้งหมด</p><p id="d-total" class="text-3xl font-bold">0</p></div>
-      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500"><p class="text-sm text-green-700">Check in แล้ว (ลงล่วงหน้า)</p><p id="d-checked" class="text-3xl font-bold text-green-700">0</p></div>
-      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500"><p class="text-sm text-orange-700">แขก Walk-in</p><p id="d-walkin" class="text-3xl font-bold text-orange-700">0</p></div>
-      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500"><p class="text-sm text-red-700">ยังไม่มา</p><p id="d-pending" class="text-3xl font-bold text-red-700">0</p></div>
-    </div>
-
-    <div class="flex flex-col md:flex-row gap-6">
-      <!-- ตาราง Dashboard -->
-      <div class="w-full md:w-2/3 bg-white rounded-lg shadow p-4">
-        <div class="flex mb-4 gap-1">
-          <button onclick="switchTab('checked_in')" id="tab-checked" class="flex-1 py-2 text-center font-bold bg-blue-600 text-white rounded">ที่มางานทั้งหมด</button>
-          <button onclick="switchTab('walkin_only')" id="tab-walkin" class="flex-1 py-2 text-center font-bold bg-gray-200 text-gray-700 rounded">Walk-in อย่างเดียว</button>
-          <button onclick="switchTab('pending')" id="tab-pending" class="flex-1 py-2 text-center font-bold bg-gray-200 text-gray-700 rounded">ยังไม่มา</button>
-        </div>
-        <div class="overflow-y-auto h-[600px]">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-gray-50 border-b sticky top-0">
-                <th class="p-3">ชื่อ-นามสกุล</th>
-                <th class="p-3">บริษัท</th>
-                <th class="p-3">ประเภท</th>
-                <th class="p-3">สถานะ / เวลา</th>
-              </tr>
-            </thead>
-            <tbody id="dashboard-table-body"></tbody>
-          </table>
+    <div class="p-6 flex-1">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-3xl font-bold text-[#4e2a84]">Admin Panel</h2>
+        <div class="flex gap-2">
+          <!-- ใช้สีเขียวสำหรับ Export เพื่อความคุ้นเคยกับ Excel -->
+          <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow font-bold">Export Excel</button>
+          <button onclick="triggerReset()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow font-bold">Reset ข้อมูล</button>
         </div>
       </div>
 
-      <!-- ส่วน Import -->
-      <div class="w-full md:w-1/3 bg-white rounded-lg shadow p-4 h-fit">
-        <h3 class="text-xl font-bold mb-4">เพิ่มรายชื่อเข้าฐานข้อมูล</h3>
-        
-        <div class="mb-6 p-4 border rounded bg-gray-50">
-          <h4 class="font-bold mb-2">วิธีที่ 1: นำเข้าไฟล์ Excel (.xlsx, .csv)</h4>
-          <input type="file" id="fileImport" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 mb-2" />
+      <!-- สรุปตัวเลข -->
+      <div class="grid grid-cols-4 gap-4 mb-8 text-center">
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#4e2a84]"><p class="text-sm text-gray-500">รวมทั้งหมด</p><p id="d-total" class="text-3xl font-bold text-[#4e2a84]">0</p></div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500"><p class="text-sm text-green-700">Check in แล้ว</p><p id="d-checked" class="text-3xl font-bold text-green-700">0</p></div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-[#3a1f64]"><p class="text-sm text-[#4e2a84]">แขก Walk-in</p><p id="d-walkin" class="text-3xl font-bold text-[#4e2a84]">0</p></div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-gray-400"><p class="text-sm text-gray-600">ยังไม่มา</p><p id="d-pending" class="text-3xl font-bold text-gray-600">0</p></div>
+      </div>
+
+      <div class="flex flex-col md:flex-row gap-6">
+        <!-- ตาราง Dashboard & Help Desk -->
+        <div class="w-full md:w-2/3 bg-white rounded-lg shadow-md p-4 border border-gray-200">
+          <div class="flex flex-wrap mb-4 gap-1">
+            <button onclick="switchTab('checked_in')" id="tab-checked" class="flex-1 py-2 font-bold bg-[#4e2a84] text-white rounded">ที่มางานทั้งหมด</button>
+            <button onclick="switchTab('walkin_only')" id="tab-walkin" class="flex-1 py-2 font-bold bg-gray-200 text-gray-700 rounded">Walk-in อย่างเดียว</button>
+            <button onclick="switchTab('pending')" id="tab-pending" class="flex-1 py-2 font-bold bg-gray-200 text-gray-700 rounded">ยังไม่มา</button>
+            <button onclick="switchTab('helpdesk')" id="tab-helpdesk" class="flex-1 py-2 font-bold bg-[#4e2a84]/10 text-[#4e2a84] rounded border border-[#4e2a84]/30 hover:bg-[#4e2a84]/20">🛠️ Help Desk (แก้ไข)</button>
+          </div>
+
+          <div id="helpdesk-search-bar" class="mb-4 hidden flex gap-2">
+             <input type="text" id="hd-search" placeholder="พิมพ์ชื่อเพื่อค้นหารายชื่อที่ต้องการแก้ไข..." class="w-full p-2 border-2 border-gray-200 rounded-lg outline-none focus:border-[#4e2a84]">
+          </div>
+
+          <div class="overflow-y-auto h-[600px]">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-100 border-b sticky top-0 text-[#4e2a84]">
+                  <th class="p-3">ชื่อ-นามสกุล</th>
+                  <th class="p-3">บริษัท</th>
+                  <th class="p-3">ประเภท</th>
+                  <th class="p-3">สถานะ / เวลา</th>
+                  <th id="th-action" class="p-3 hidden text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-table-body"></tbody>
+            </table>
+          </div>
         </div>
 
-        <div class="p-4 border rounded bg-gray-50">
-          <h4 class="font-bold mb-2">วิธีที่ 2: Copy & Paste จาก Excel</h4>
-          <textarea id="textImport" rows="6" class="w-full p-2 border rounded text-sm mb-2" placeholder="คอลัมน์: ลำดับ | ชื่อ | เบอร์ | E-mail | บริษัท | ธุรกิจ"></textarea>
-          <button onclick="processTextImport()" class="w-full bg-blue-600 text-white py-2 rounded font-bold">บันทึกข้อมูล</button>
+        <!-- ส่วน Import -->
+        <div class="w-full md:w-1/3 bg-white rounded-lg shadow-md p-4 h-fit border border-gray-200">
+          <h3 class="text-xl font-bold mb-4 text-[#4e2a84]">เพิ่มรายชื่อเข้าฐานข้อมูล</h3>
+          <div class="mb-6 p-4 border rounded bg-gray-50">
+            <h4 class="font-bold mb-2">วิธีที่ 1: นำเข้าไฟล์ Excel (.xlsx, .csv)</h4>
+            <input type="file" id="fileImport" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[#4e2a84]/10 file:text-[#4e2a84] mb-2" />
+          </div>
+          <div class="p-4 border rounded bg-gray-50">
+            <h4 class="font-bold mb-2">วิธีที่ 2: Copy & Paste จาก Excel</h4>
+            <textarea id="textImport" rows="6" class="w-full p-2 border border-gray-300 rounded text-sm mb-2 focus:border-[#4e2a84] outline-none" placeholder="คอลัมน์: ลำดับ | ชื่อ | เบอร์ | E-mail | บริษัท | ธุรกิจ"></textarea>
+            <button onclick="processTextImport()" class="w-full bg-[#4e2a84] hover:bg-[#3a1f64] text-white py-2 rounded font-bold transition-colors">บันทึกข้อมูล</button>
+          </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal สำหรับ Edit ข้อมูล -->
+  <div id="edit-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden z-50">
+    <div class="bg-white p-6 rounded-xl w-full max-w-md shadow-xl border-t-8 border-[#4e2a84]">
+      <h2 class="text-2xl font-bold mb-4 text-[#4e2a84]">แก้ไขข้อมูลผู้เข้าร่วม</h2>
+      <div class="space-y-3">
+        <div><label class="text-sm font-bold text-[#4e2a84]">ชื่อ-นามสกุล</label><input id="edit-name" class="w-full p-2 border-2 rounded focus:border-[#4e2a84] outline-none"></div>
+        <div><label class="text-sm font-bold text-[#4e2a84]">เบอร์โทร</label><input id="edit-phone" class="w-full p-2 border-2 rounded focus:border-[#4e2a84] outline-none"></div>
+        <div><label class="text-sm font-bold text-[#4e2a84]">E-mail</label><input id="edit-email" class="w-full p-2 border-2 rounded focus:border-[#4e2a84] outline-none"></div>
+        <div><label class="text-sm font-bold text-[#4e2a84]">บริษัท</label><input id="edit-company" class="w-full p-2 border-2 rounded focus:border-[#4e2a84] outline-none"></div>
+        <div><label class="text-sm font-bold text-[#4e2a84]">กลุ่มธุรกิจ</label><input id="edit-group" class="w-full p-2 border-2 rounded focus:border-[#4e2a84] outline-none"></div>
+        <div>
+          <label class="text-sm font-bold text-[#4e2a84]">สถานะการเช็คอิน</label>
+          <select id="edit-status" class="w-full p-2 border-2 rounded focus:border-[#4e2a84] outline-none">
+            <option value="pending">ยังไม่มา</option>
+            <option value="checked_in">เช็คอินแล้ว</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-6 flex gap-2">
+        <button onclick="closeEditModal()" class="flex-1 p-3 bg-gray-200 hover:bg-gray-300 rounded font-bold text-gray-800">ยกเลิก</button>
+        <button onclick="saveEdit()" class="flex-1 p-3 bg-[#4e2a84] hover:bg-[#3a1f64] text-white rounded font-bold">บันทึกการแก้ไข</button>
       </div>
     </div>
   </div>
 
   <script type="module">
     import { db } from './firebase-config.js';
-    import { collection, doc, serverTimestamp, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    import { collection, doc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
     let dashData = [];
     let currentTab = 'checked_in';
-    let currentDisplayData = []; // เก็บตัวแปรสำหรับ Export
+    let currentDisplayData = []; 
+    let editingId = null;
 
     onSnapshot(collection(db, "attendees"), (snapshot) => {
       dashData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -78,11 +118,31 @@
 
     window.switchTab = (tab) => {
       currentTab = tab;
-      document.getElementById('tab-checked').className = `flex-1 py-2 font-bold rounded ${tab === 'checked_in' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
-      document.getElementById('tab-walkin').className = `flex-1 py-2 font-bold rounded ${tab === 'walkin_only' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
-      document.getElementById('tab-pending').className = `flex-1 py-2 font-bold rounded ${tab === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
+      const baseBtnClass = "flex-1 py-2 font-bold rounded transition-colors ";
+      const activeClass = "bg-[#4e2a84] text-white";
+      const inactiveClass = "bg-gray-200 text-gray-700 hover:bg-gray-300";
+      
+      document.getElementById('tab-checked').className = baseBtnClass + (tab === 'checked_in' ? activeClass : inactiveClass);
+      document.getElementById('tab-walkin').className = baseBtnClass + (tab === 'walkin_only' ? activeClass : inactiveClass);
+      document.getElementById('tab-pending').className = baseBtnClass + (tab === 'pending' ? activeClass : inactiveClass);
+      document.getElementById('tab-helpdesk').className = baseBtnClass + (tab === 'helpdesk' ? "bg-[#4e2a84] text-white" : "bg-[#4e2a84]/10 text-[#4e2a84] border border-[#4e2a84]/30 hover:bg-[#4e2a84]/20");
+      
+      const searchBar = document.getElementById('helpdesk-search-bar');
+      const thAction = document.getElementById('th-action');
+      
+      if(tab === 'helpdesk') {
+        searchBar.classList.remove('hidden');
+        thAction.classList.remove('hidden');
+        document.getElementById('hd-search').value = '';
+      } else {
+        searchBar.classList.add('hidden');
+        thAction.classList.add('hidden');
+      }
+
       renderDashboard();
     };
+
+    document.getElementById('hd-search').addEventListener('input', () => renderDashboard());
 
     function renderDashboard() {
       const walkIns = dashData.filter(a => a.isWalkIn);
@@ -95,13 +155,15 @@
       document.getElementById('d-walkin').innerText = walkIns.length;
       document.getElementById('d-pending').innerText = pendingPreReg.length;
 
-      // กรองข้อมูลตาม Tab ที่เลือก
       if (currentTab === 'checked_in') {
-        currentDisplayData = dashData.filter(a => a.status === 'checked_in'); // ทั้งหมดที่มางาน
+        currentDisplayData = dashData.filter(a => a.status === 'checked_in'); 
       } else if (currentTab === 'walkin_only') {
-        currentDisplayData = walkIns; // Walk-in อย่างเดียว
-      } else {
-        currentDisplayData = pendingPreReg; // ยังไม่มา
+        currentDisplayData = walkIns; 
+      } else if (currentTab === 'pending') {
+        currentDisplayData = pendingPreReg; 
+      } else if (currentTab === 'helpdesk') {
+        const keyword = document.getElementById('hd-search').value.toLowerCase().trim();
+        currentDisplayData = keyword ? dashData.filter(g => g.fullName && g.fullName.toLowerCase().includes(keyword)) : dashData;
       }
 
       const tbody = document.getElementById('dashboard-table-body');
@@ -113,22 +175,100 @@
           : `<span class="text-gray-400">[⏳ ยังไม่มา]</span>`;
           
         const typeHtml = g.isWalkIn 
-          ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs">Walk-in</span>` 
-          : `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">มีรายชื่อ</span>`;
+          ? `<span class="bg-[#4e2a84]/10 text-[#4e2a84] px-2 py-1 rounded text-xs font-bold border border-[#4e2a84]/20">Walk-in</span>` 
+          : `<span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold border border-gray-200">มีรายชื่อ</span>`;
+
+        const editBtnHtml = currentTab === 'helpdesk' 
+          ? `<td class="p-3 text-center"><button onclick="openEditModal('${g.id}')" class="bg-[#4e2a84]/10 text-[#4e2a84] px-4 py-1 rounded hover:bg-[#4e2a84] hover:text-white transition-colors text-sm font-bold border border-[#4e2a84]/30">แก้ไข</button></td>` 
+          : '';
 
         return `
-          <tr class="border-b hover:bg-gray-50">
-            <td class="p-3">${g.fullName || '-'}</td>
-            <td class="p-3">${g.company || '-'}</td>
+          <tr class="border-b border-gray-100 hover:bg-[#4e2a84]/5 transition-colors">
+            <td class="p-3 text-gray-800">${g.fullName || '-'}</td>
+            <td class="p-3 text-gray-600">${g.company || '-'}</td>
             <td class="p-3">${typeHtml}</td>
             <td class="p-3">${statusHtml}</td>
+            ${editBtnHtml}
           </tr>
         `;
       }).join('');
     }
 
+    // --- Help Desk Edit Logic ---
+    window.openEditModal = (id) => {
+      const guest = dashData.find(g => g.id === id);
+      if(!guest) return;
+      editingId = id;
+      
+      document.getElementById('edit-name').value = guest.fullName || '';
+      document.getElementById('edit-phone').value = guest.phone || '';
+      document.getElementById('edit-email').value = guest.email || '';
+      document.getElementById('edit-company').value = guest.company || '';
+      document.getElementById('edit-group').value = guest.businessGroup || '';
+      document.getElementById('edit-status').value = guest.status === 'checked_in' ? 'checked_in' : 'pending';
+      
+      document.getElementById('edit-modal').classList.remove('hidden');
+    };
+
+    window.closeEditModal = () => {
+      document.getElementById('edit-modal').classList.add('hidden');
+      editingId = null;
+    };
+
+    window.saveEdit = async () => {
+      if(!editingId) return;
+      
+      const newStatus = document.getElementById('edit-status').value;
+      const guest = dashData.find(g => g.id === editingId);
+      
+      const updatePayload = {
+        fullName: document.getElementById('edit-name').value,
+        phone: document.getElementById('edit-phone').value,
+        email: document.getElementById('edit-email').value,
+        company: document.getElementById('edit-company').value,
+        businessGroup: document.getElementById('edit-group').value,
+        status: newStatus
+      };
+
+      if(newStatus === 'checked_in' && guest.status !== 'checked_in') {
+        updatePayload.checkInTime = serverTimestamp();
+      }
+
+      try {
+        await updateDoc(doc(db, "attendees", editingId), updatePayload);
+        closeEditModal();
+        alert('บันทึกการแก้ไขเรียบร้อย');
+      } catch(e) {
+        alert('เกิดข้อผิดพลาด: ' + e.message);
+      }
+    };
+
+    // --- Reset Logic ---
+    window.triggerReset = async () => {
+      if(dashData.length === 0) return alert('ไม่มีข้อมูลในระบบ');
+      
+      const confirm1 = confirm("⚠️ คำเตือน: คุณกำลังจะลบข้อมูลผู้เข้าร่วม 'ทั้งหมด' ออกจากฐานข้อมูล!\n\nคุณแน่ใจหรือไม่?");
+      if(!confirm1) return;
+
+      const code = prompt("หากต้องการลบทั้งหมด กรุณาพิมพ์คำว่า: RESET");
+      if(code !== 'RESET') return alert('ยกเลิกการลบข้อมูล (รหัสยืนยันไม่ถูกต้อง)');
+
+      document.body.style.cursor = 'wait';
+      try {
+        const batch = writeBatch(db);
+        dashData.forEach(item => {
+          batch.delete(doc(db, "attendees", item.id));
+        });
+        await batch.commit();
+        alert('ลบข้อมูลทั้งหมดเรียบร้อยแล้ว');
+      } catch(e) {
+        alert('ลบข้อมูลล้มเหลว: ' + e.message);
+      }
+      document.body.style.cursor = 'default';
+    };
+
+    // --- Export Logic ---
     window.exportExcel = () => {
-      // Export เฉพาะข้อมูลใน Tab ปัจจุบัน (currentDisplayData)
       if (currentDisplayData.length === 0) return alert('ไม่มีข้อมูลสำหรับ Export');
       
       const exportData = currentDisplayData.map((a, i) => ({
@@ -219,17 +359,12 @@
       saveBatchToFirestore(parsedData);
     };
 
-    // ทำให้กล่อง Text Import สามารถกดปุ่ม Tab ได้
     document.getElementById('textImport').addEventListener('keydown', function(e) {
       if (e.key === 'Tab') {
         e.preventDefault();
         const start = this.selectionStart;
         const end = this.selectionEnd;
-
-        // แทรก Tab (\t) ตรงตำแหน่งที่เคอร์เซอร์อยู่
         this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
-
-        // เลื่อนเคอร์เซอร์ไปหลัง Tab
         this.selectionStart = this.selectionEnd = start + 1;
       }
     });
