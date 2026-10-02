@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Station 1: Check-in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <div id="app" class="max-w-md mx-auto min-h-screen shadow-md bg-white relative flex flex-col">
+    
+    <!-- ==================== 1. หน้า Landing Page ==================== -->
+    <div id="view-landing" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+      <h1 class="text-4xl font-bold text-purple-700 mb-4 tracking-wide">LOGISTICS GROWTH<br>2027</h1>
+      <p class="text-gray-500 mb-12 text-lg">จุดเช็คอินสำหรับผู้มีรายชื่อล่วงหน้า</p>
+      
+      <button onclick="enterSearch()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-2xl py-5 rounded-2xl shadow-[0_8px_20px_rgba(37,99,235,0.3)] font-bold active:scale-95 transition-all">
+        Enter
+      </button>
+    </div>
+
+    <!-- ==================== 2. หน้าค้นหา ==================== -->
+    <div id="view-search" class="flex-1 flex flex-col p-6" style="display: none;">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-blue-700">ค้นหารายชื่อ</h2>
+        <button onclick="backToLanding()" class="text-gray-600 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors">กลับ</button>
+      </div>
+      <input type="text" id="searchInput" placeholder="พิมพ์ชื่อ นามสกุล หรือ บริษัท..." class="w-full p-4 border-2 border-gray-200 rounded-xl text-lg mb-4 focus:border-blue-500 outline-none transition-colors">
+      <div id="searchResults" class="flex-1 overflow-y-auto"></div>
+    </div>
+
+    <!-- ==================== 3. หน้าต่างยืนยัน/แก้ไข ==================== -->
+    <div id="view-confirm" class="absolute inset-0 bg-white p-6 flex flex-col justify-center" style="display: none;">
+      <div id="confirm-box">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center mb-8">
+          <h2 class="text-gray-500 mb-2">ยืนยันข้อมูลการเช็คอิน</h2>
+          <p id="c-name" class="text-2xl font-bold mb-1">-</p>
+          <p id="c-company" class="text-lg text-gray-600">-</p>
+        </div>
+        <div class="space-y-4">
+          <button id="btn-checkin" class="w-full p-4 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xl font-bold shadow-md transition-colors">Check in</button>
+          <button onclick="toggleEdit(true)" class="w-full p-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-xl font-bold shadow-md transition-colors">แก้ไขข้อมูล</button>
+          <button onclick="closeConfirm()" class="w-full p-4 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-xl font-bold transition-colors">ยกเลิก</button>
+        </div>
+      </div>
+
+      <div id="edit-box" style="display: none;">
+        <h2 class="text-2xl font-bold mb-4">แก้ไขข้อมูล</h2>
+        <div class="space-y-4">
+          <input id="e-name" class="w-full p-3 border rounded-lg" placeholder="ชื่อ-นามสกุล">
+          <input id="e-phone" class="w-full p-3 border rounded-lg" placeholder="เบอร์โทรศัพท์">
+          <input id="e-email" class="w-full p-3 border rounded-lg" placeholder="E-mail">
+          <input id="e-company" class="w-full p-3 border rounded-lg" placeholder="บริษัท">
+        </div>
+        <div class="mt-8 flex gap-3">
+          <button onclick="toggleEdit(false)" class="flex-1 p-4 bg-gray-200 hover:bg-gray-300 rounded-xl font-bold transition-colors">ยกเลิก</button>
+          <button id="btn-save-checkin" class="flex-1 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors">Save & Check in</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 4. หน้าสำเร็จ ==================== -->
+    <div id="view-success" class="absolute inset-0 bg-green-50 p-6 flex flex-col items-center justify-center text-center" style="display: none;">
+      <div class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6 shadow-lg">
+        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+      </div>
+      <h1 class="text-3xl font-bold text-green-700 mb-4">ยินดีต้อนรับ</h1>
+      <p id="s-name" class="text-2xl font-bold mb-2">-</p>
+      <p id="s-company" class="text-xl text-gray-700">-</p>
+      <button onclick="resetToLanding()" class="mt-12 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-10 font-bold shadow-md transition-colors">เสร็จสิ้น (กลับหน้าแรก)</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase-config.js';
+    import { collection, getDocs, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    let allAttendees = [];
+    let currentGuest = null;
+
+    // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
+    async function loadData() {
+      const snapshot = await getDocs(collection(db, "attendees"));
+      allAttendees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+    loadData();
+
+    // ควบคุมการเปลี่ยนหน้า
+    window.enterSearch = () => {
+      document.getElementById('view-landing').style.display = 'none';
+      document.getElementById('view-search').style.display = 'flex';
+      document.getElementById('searchInput').focus();
+    };
+
+    window.backToLanding = () => {
+      document.getElementById('view-search').style.display = 'none';
+      document.getElementById('view-landing').style.display = 'flex';
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+    };
+
+    // ระบบค้นหา
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase().trim();
+      const resultsDiv = document.getElementById('searchResults');
+      if (!keyword) { resultsDiv.innerHTML = ''; return; }
+
+      const filtered = allAttendees.filter(g => 
+        (g.fullName && g.fullName.toLowerCase().includes(keyword)) || 
+        (g.company && g.company.toLowerCase().includes(keyword))
+      );
+
+      resultsDiv.innerHTML = filtered.map(g => `
+        <div onclick="selectGuest('${g.id}')" class="p-4 mb-3 bg-white border ${g.status === 'checked_in' ? 'border-green-400 bg-green-50' : 'border-gray-200'} rounded-xl shadow-sm cursor-pointer hover:border-blue-400 active:bg-gray-50 transition-all">
+          <div class="flex justify-between items-center">
+             <div>
+                <p class="font-bold text-lg text-gray-800">${g.fullName || '-'}</p>
+                <p class="text-gray-500 text-sm mt-1">${g.company || '-'}</p>
+             </div>
+             ${g.status === 'checked_in' ? '<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold shadow-sm">✅ เช็คอินแล้ว</span>' : ''}
+          </div>
+        </div>
+      `).join('');
+    });
+
+    // เลือกรายชื่อ
+    window.selectGuest = async (id) => {
+      const docRef = doc(db, "attendees", id);
+      const snap = await getDoc(docRef);
+      if(snap.exists()) {
+        currentGuest = { id: snap.id, ...snap.data() };
+        document.getElementById('c-name').innerText = currentGuest.fullName;
+        document.getElementById('c-company').innerText = currentGuest.company || '-';
+        document.getElementById('view-search').style.display = 'none';
+        document.getElementById('view-confirm').style.display = 'flex';
+      }
+    };
+
+    // ปิดหน้าต่างยืนยัน
+    window.closeConfirm = () => {
+      document.getElementById('view-confirm').style.display = 'none';
+      document.getElementById('view-search').style.display = 'flex';
+      toggleEdit(false);
+    };
+
+    // เปิด/ปิดโหมดแก้ไข
+    window.toggleEdit = (show) => {
+      if(show) {
+        document.getElementById('confirm-box').style.display = 'none';
+        document.getElementById('edit-box').style.display = 'block';
+        document.getElementById('e-name').value = currentGuest.fullName || '';
+        document.getElementById('e-phone').value = currentGuest.phone || '';
+        document.getElementById('e-email').value = currentGuest.email || '';
+        document.getElementById('e-company').value = currentGuest.company || '';
+      } else {
+        document.getElementById('confirm-box').style.display = 'block';
+        document.getElementById('edit-box').style.display = 'none';
+      }
+    };
+
+    // บันทึกการเช็คอิน
+    async function processCheckIn(data) {
+      // ปรับปรุง UI ทันที
+      document.getElementById('s-name').innerText = data.fullName;
+      document.getElementById('s-company').innerText = data.company || '-';
+      document.getElementById('view-confirm').style.display = 'none';
+      document.getElementById('view-success').style.display = 'flex';
+      
+      // บันทึกลงฐานข้อมูล
+      await updateDoc(doc(db, "attendees", currentGuest.id), {
+        ...data,
+        status: 'checked_in',
+        checkInTime: serverTimestamp()
+      });
+      loadData(); // รีเฟรชข้อมูลในระบบ
+    }
+
+    document.getElementById('btn-checkin').addEventListener('click', () => processCheckIn(currentGuest));
+    
+    document.getElementById('btn-save-checkin').addEventListener('click', () => {
+      processCheckIn({
+        fullName: document.getElementById('e-name').value,
+        phone: document.getElementById('e-phone').value,
+        email: document.getElementById('e-email').value,
+        company: document.getElementById('e-company').value,
+      });
+    });
+
+    // กลับไปหน้า Landing หลังเสร็จสิ้น
+    window.resetToLanding = () => {
+      document.getElementById('view-success').style.display = 'none';
+      document.getElementById('view-landing').style.display = 'flex';
+      document.getElementById('searchInput').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+      toggleEdit(false);
+    };
+  </script>
+</body>
+</html>

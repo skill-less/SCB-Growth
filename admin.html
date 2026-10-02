@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin — LOGISTICS GROWTH 2027</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#f4f5f1;--card:#fff;--ink:#17231f;--mute:#66736d;--line:#dde2dc;--brand:#6b2fa0;--brand2:#54247f;--gold:#e8a317;--red:#b3392f;--ok:#1f7a4d}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:'IBM Plex Sans Thai',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:560px;margin:0 auto;padding:20px 18px 40px}
+.wrap.wide{max-width:1100px}
+h1{font-size:30px;line-height:1.25;margin:0 0 8px;font-weight:700}
+h2{font-size:22px;margin:0 0 14px;font-weight:600}
+p.sub{color:var(--mute);margin:0 0 24px}
+.btn{font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px 22px;cursor:pointer;background:var(--brand);color:#fff;min-height:52px;font-size:18px}
+.btn:hover{background:var(--brand2)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.ghost:hover{background:var(--line)}
+.btn.danger{background:transparent;color:var(--red);border:1.5px solid var(--red)}
+.btn.gold{background:var(--gold);color:#241a00}
+.btn.sm{min-height:38px;padding:6px 14px;font-size:15px;border-radius:9px}
+.btn.block{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
+input,select{font:inherit;width:100%;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:18px}
+input:focus,.btn:focus-visible,button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+label{display:block;font-size:15px;color:var(--mute);margin:14px 0 5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+.hero{min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero .mark{width:64px;height:64px;border-radius:18px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:32px;margin-bottom:24px}
+.hero h1{font-size:40px}
+.ac{position:relative}
+.list{margin-top:10px;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-top:0;font:inherit;color:inherit}
+.item:last-child{border-bottom:0}
+.item:hover,.item:focus-visible{background:var(--bg)}
+.item b{display:block;font-weight:600}.item small{color:var(--mute)}
+.tag{font-size:13px;padding:2px 10px;border-radius:99px;background:var(--line);color:var(--mute);white-space:nowrap}
+.tag.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.tag.no{background:color-mix(in srgb,var(--gold) 25%,transparent);color:var(--ink)}
+dl{margin:0 0 20px;display:grid;grid-template-columns:110px 1fr;gap:10px 12px}
+dt{color:var(--mute)}dd{margin:0;font-weight:600;word-break:break-word}
+.warn{background:color-mix(in srgb,var(--gold) 22%,transparent);border-radius:10px;padding:10px 14px;margin-bottom:16px}
+.welcome{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:var(--brand);color:#fff;margin:0;padding:30px}
+.welcome .tick{font-size:70px;line-height:1}
+.welcome h1{font-size:44px;margin:14px 0 4px}.welcome p{font-size:28px;margin:0 0 30px;opacity:.92}
+.welcome .btn{background:#fff;color:#6b2fa0}
+.welcome{background:#6b2fa0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
+.link{background:none;border:0;color:var(--brand);font:inherit;cursor:pointer;padding:4px 0;text-decoration:underline}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0 20px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stat span{color:var(--mute);font-size:15px}.stat b{display:block;font-size:38px;line-height:1.1}
+.bar{height:10px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:18px}.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{font:inherit;border:1.5px solid var(--line);background:transparent;color:var(--ink);padding:9px 18px;border-radius:99px;cursor:pointer}
+.tab[aria-selected=true],.tab[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{cursor:pointer;user-select:none;color:var(--mute);font-weight:500;position:sticky;top:0;background:var(--card)}
+th:hover{color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:12px;z-index:9}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px;z-index:8;overflow:auto}
+.dlg{background:var(--card);border-radius:16px;padding:22px;width:100%;max-width:720px;max-height:92vh;overflow:auto}
+textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:16px;resize:vertical}
+.hint{color:var(--mute);font-size:14px;margin:8px 0}
+.demo{background:var(--gold);color:#241a00;font-size:14px;text-align:center;padding:5px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น</div>
+<div id="app"></div>
+<div id="modal" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<script>
+/* ============ ตั้งค่า Firebase (Realtime Database) ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBiiV4i3gExoT-SbB6uGMeQGmslj34Y_mY",
+  authDomain: "selfcheckin69.firebaseapp.com",
+  databaseURL: "https://selfcheckin69-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "selfcheckin69",
+  storageBucket: "selfcheckin69.firebasestorage.app",
+  messagingSenderId: "148350658850",
+  appId: "1:148350658850:web:f9c9d459ea037c7fec9d7b"
+};
+const EVENT_NAME = "LOGISTICS GROWTH 2027";
+const VENUE = "หอประชุมมหิศร ธนาคารไทยพาณิชย์ สำนักงานใหญ่";
+/* โครงสร้าง: /guests/{id} = {seq,name,phone,email,company,group,checkedIn,checkedInAt,walkIn} */
+
+/* ============ Data layer ============ */
+const FIELDS = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]];
+let guests = [], listeners = [], DB;
+const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
+if (useFB) {
+  firebase.initializeApp(firebaseConfig);
+  const ref = firebase.database().ref("guests");
+  DB = {
+    sub(cb){ ref.on("value", s => { const v = s.val() || {}; cb(Object.entries(v).map(([id,g]) => ({...g,id}))); }, e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); }); },
+    update(id, o){ return ref.child(id).update(o); },
+    add(o){ const k = ref.push().key; return ref.child(k).set(o).then(()=>k); },
+    bulk(list){ const m = {}; list.forEach(g => m[ref.push().key] = g); return ref.update(m); }
+  };
+} else {
+  document.getElementById("demo").hidden = false;
+  const KEY = "checkin_guests_demo";
+  let store = JSON.parse(localStorage.getItem(KEY) || "null") || {
+    a1:{seq:"1",name:"สมชาย ใจดี",phone:"0812345678",email:"somchai@thaitech.co.th",company:"บริษัท ไทยเทค จำกัด",group:"ขนส่งสินค้า"},
+    a2:{seq:"2",name:"สมหญิง รักเรียน",phone:"0898765432",email:"somying@thaitech.co.th",company:"บริษัท ไทยเทค จำกัด",group:"ขนส่งสินค้า"},
+    a3:{seq:"3",name:"สมชาย มั่นคง",phone:"0861112222",email:"sc@example.com",company:"ธนาคารตัวอย่าง",group:"การเงิน"},
+    a4:{seq:"4",name:"Alice Wong",phone:"0823334444",email:"alice@globex.com",company:"Globex Asia",group:"คลังสินค้า"}
+  };
+  const save = () => { localStorage.setItem(KEY, JSON.stringify(store)); emit(); };
+  let emit = () => {};
+  DB = {
+    sub(cb){ emit = () => cb(Object.entries(store).map(([id,g]) => ({...g,id}))); emit(); },
+    update(id,o){ store[id] = {...store[id],...o}; save(); return Promise.resolve(); },
+    add(o){ const k = "g"+Date.now()+Math.random().toString(36).slice(2,6); store[k] = o; save(); return Promise.resolve(k); },
+    bulk(list){ list.forEach((g,i) => store["i"+Date.now()+i] = g); save(); return Promise.resolve(); }
+  };
+}
+
+/* ============ Helpers ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const full = g => (g.name||"").trim() || "(ไม่ระบุชื่อ)";
+const fmt = t => t ? new Date(t).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"medium"}) : "";
+function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2500); }
+const norm = s => String(s||"").toLowerCase().replace(/\s+/g," ").trim();
+
+const A = html => { $("#app").innerHTML = html; };
+let view = {name:"dash"};
+/* ---- Dashboard ---- */
+let tab = "in", sortK = "seq", sortD = 1, filt = "", wOnly = false;
+function dash(){
+  const base = wOnly ? guests.filter(g => g.walkIn) : guests, nW = guests.filter(g => g.walkIn).length;
+  const inn = base.filter(g => g.checkedIn), out = base.filter(g => !g.checkedIn);
+  const nIn = guests.filter(g => g.checkedIn).length, pct = guests.length ? Math.round(nIn/guests.length*100) : 0;
+  const rows = (tab==="in" ? inn : out).filter(g => !filt || norm(Object.values(g).join(" ")).includes(norm(filt)))
+    .sort((a,b) => { const x=a[sortK]??"", y=b[sortK]??""; const nx=parseFloat(x), ny=parseFloat(y); return (sortK==="seq"||typeof x==="number" ? (nx||0)-(ny||0) : String(x).localeCompare(String(y),"th")) * sortD; });
+  const cols = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]].concat(tab==="in"?[["checkedInAt","เวลาเช็คอิน"]]:[]);
+  A(`<div class="wrap wide">
+    <div class="top"><h1 style="margin:0;font-size:26px">Dashboard</h1><div class="row" style="flex:none">
+      <button class="btn ghost sm" id="imp">+ เพิ่มรายชื่อ</button><select id="expk" aria-label="ประเภทข้อมูลที่ export" style="width:auto;padding:6px 10px;font-size:15px;min-height:38px"><option value="all">ทั้งหมด (แยก sheet)</option><option value="in">เช็คอินแล้ว</option><option value="out">ยังไม่มา</option><option value="walk">Walk-in เท่านั้น</option></select><button class="btn sm" id="exp">Export Excel</button></div></div>
+    <div class="stats"><div class="stat"><span>รวมทั้งหมด</span><b>${guests.length}</b></div><div class="stat"><span>Check in แล้ว</span><b style="color:var(--ok)">${nIn}</b></div><div class="stat"><span>ยังไม่ Check in</span><b>${guests.length-nIn}</b></div><div class="stat" id="wst" style="cursor:pointer"><span>แขก Walk-in</span><b style="color:var(--brand)">${nW}</b></div></div>
+    <div class="bar" aria-label="${pct}%"><i style="width:${pct}%"></i></div>
+    <div class="row" style="align-items:center;margin-bottom:12px">
+      <div class="tabs" role="tablist" style="margin:0;flex:none"><button class="tab" role="tab" data-t="in" aria-selected="${tab==="in"}">เช็คอินแล้ว (${inn.length})</button><button class="tab" role="tab" data-t="out" aria-selected="${tab==="out"}">ยังไม่มา (${out.length})</button><button class="tab" id="wo" aria-pressed="${wOnly}">เฉพาะ Walk-in (${nW})</button></div>
+      <input id="flt" type="search" placeholder="กรองรายชื่อ" value="${esc(filt)}" style="max-width:280px;padding:9px 14px;font-size:16px">
+    </div>
+    <div class="tw"><table><thead><tr>${cols.map(([k,l]) => `<th data-k="${k}">${l}${sortK===k?(sortD>0?" ▲":" ▼"):""}</th>`).join("")}<th></th></tr></thead>
+    <tbody>${rows.map(g => `<tr>${cols.map(([k]) => `<td>${k==="checkedInAt"?esc(fmt(g[k])):esc(g[k]||"")}</td>`).join("")}<td>${tab==="in"?`<button class="btn ghost sm" data-un="${g.id}">ยกเลิกเช็คอิน</button>`:`<button class="btn sm" data-ci="${g.id}">เช็คอินให้</button>`}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--mute)">ไม่มีรายการ</td></tr>`}</tbody></table></div>
+  </div>`);
+  document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.t; dash(); });
+  $("#wst").onclick = () => { wOnly = !wOnly; dash(); };
+  $("#wo").onclick = () => { wOnly = !wOnly; dash(); };
+  document.querySelectorAll("th[data-k]").forEach(h => h.onclick = () => { sortD = sortK===h.dataset.k ? -sortD : 1; sortK = h.dataset.k; dash(); });
+  const f = $("#flt"); f.oninput = () => { filt = f.value; const p = f.selectionStart; dash(); const n=$("#flt"); n.focus(); n.setSelectionRange(p,p); };
+  document.querySelectorAll("[data-un]").forEach(b => b.onclick = () => confirm("ยกเลิกการเช็คอินของรายการนี้?") && DB.update(b.dataset.un,{checkedIn:false,checkedInAt:null}));
+  document.querySelectorAll("[data-ci]").forEach(b => b.onclick = () => DB.update(b.dataset.ci,{checkedIn:true,checkedInAt:Date.now()}));
+  $("#exp").onclick = () => exportXlsx($("#expk").value);
+  $("#imp").onclick = openAdd;
+}
+function exportXlsx(kind="all"){
+  const map = g => ({"ลำดับ":g.seq||"","ชื่อ-นามสกุล":g.name||"","เบอร์โทรศัพท์":g.phone||"","E-mail":g.email||"","ชื่อบริษัท":g.company||"","กลุ่มธุรกิจ":g.group||"","สถานะ":g.checkedIn?"เช็คอินแล้ว":"ยังไม่มา","เวลาเช็คอิน":g.checkedInAt?fmt(g.checkedInAt):"","แขกหน้างาน":g.walkIn?"ใช่":""});
+  const bySeq = l => [...l].sort((a,b) => (parseFloat(a.seq)||0)-(parseFloat(b.seq)||0));
+  const sets = {all:["ทั้งหมด",guests], in:["เช็คอินแล้ว",guests.filter(g=>g.checkedIn)], out:["ยังไม่มา",guests.filter(g=>!g.checkedIn)], walk:["Walk-in",guests.filter(g=>g.walkIn)]};
+  const pick = kind==="all" ? ["all","in","out","walk"] : [kind];
+  if (!sets[kind==="all"?"all":kind][1].length) return toast("ไม่มีข้อมูลในประเภทนี้");
+  const wb = XLSX.utils.book_new();
+  pick.forEach(k => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bySeq(sets[k][1]).map(map)), sets[k][0]));
+  const tag = {all:"all",in:"checked-in",out:"not-arrived",walk:"walk-in"}[kind];
+  XLSX.writeFile(wb, `checkin_${tag}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+const ALIAS = {seq:["ลำดับ","seq","no","no."],name:["ชื่อ-นามสกุล","ชื่อ นามสกุล","name","full name","ชื่อ"],phone:["เบอร์โทรศัพท์","เบอร์โทร","phone","tel","โทรศัพท์"],email:["e-mail","email","อีเมล"],company:["ชื่อบริษัท","บริษัท","company"],group:["กลุ่มธุรกิจ","group","ประเภทธุรกิจ"]};
+const ORDER = ["seq","name","phone","email","company","group"];
+function parseRows(aoa){
+  aoa = aoa.map(r => r.map(c => String(c ?? "").trim())).filter(r => r.some(Boolean));
+  let hi = -1, map = {};
+  for (let i=0; i<Math.min(aoa.length,10); i++){
+    const m = {}; aoa[i].forEach((c,ci) => { const k = c.toLowerCase(); for (const f in ALIAS) if (m[f]===undefined && ALIAS[f].includes(k)) m[f] = ci; });
+    if (Object.keys(m).length >= 2){ hi = i; map = m; break; }
+  }
+  let body = aoa;
+  if (hi >= 0) body = aoa.slice(hi+1);
+  else {
+    const cols = Math.max(0,...aoa.map(r => r.length));
+    const order = cols <= 1 ? ["name"] : /^\d+$/.test(aoa[0]?.[0] || "") ? ORDER : ORDER.slice(1);
+    order.forEach((f,i) => map[f] = i);
+  }
+  return body.map(r => { const o = {checkedIn:false}; ORDER.forEach(f => o[f] = map[f]!==undefined ? (r[map[f]]||"") : "");
+    if (/^[1-9]\d{8}$/.test(o.phone)) o.phone = "0"+o.phone; return o; }).filter(o => o.name || o.company);
+}
+const toAoa = wb => XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:"", raw:false});
+function openAdd(){
+  const m = $("#modal"); m.hidden = false; let mode = "file", pending = [], skip = true;
+  m.innerHTML = `<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="เพิ่มรายชื่อ">
+    <div class="top"><h2 style="margin:0">เพิ่มรายชื่อ</h2><button class="btn ghost sm" id="mx">ปิด</button></div>
+    <div class="tabs"><button class="tab" data-m="file" aria-selected="true">อัปโหลดไฟล์ Excel / CSV</button><button class="tab" data-m="paste" aria-selected="false">วางรายชื่อ (Paste)</button></div>
+    <div id="pf"><input type="file" id="file" accept=".xlsx,.xls,.csv"><p class="hint">หัวคอลัมน์ตามเอกสารลงทะเบียน: ลำดับ, ชื่อ-นามสกุล, เบอร์โทรศัพท์, E-mail, ชื่อบริษัท, กลุ่มธุรกิจ (ไฟล์ CSV ควรบันทึกเป็น UTF-8)</p></div>
+    <div id="pp" hidden><textarea id="ta" rows="8" placeholder="คัดลอกรายชื่อจาก Excel มาวางที่นี่ 1 คนต่อ 1 บรรทัด&#10;ลำดับ, ชื่อ-นามสกุล, เบอร์โทรศัพท์, E-mail, ชื่อบริษัท, กลุ่มธุรกิจ"></textarea>
+      <p class="hint">รองรับข้อมูลที่คัดลอกจาก Excel (คั่นด้วย Tab) หรือคั่นด้วยจุลภาค จะมีแถวหัวคอลัมน์หรือไม่ก็ได้ ถ้าวางแค่ชื่ออย่างเดียวก็ได้</p></div>
+    <div id="pv"></div></div></div>`;
+  const close = () => { m.hidden = true; m.innerHTML = ""; document.removeEventListener("keydown", esc2); };
+  const esc2 = e => e.key === "Escape" && close();
+  document.addEventListener("keydown", esc2);
+  m.querySelector(".ov").onclick = e => e.target.classList.contains("ov") && close();
+  $("#mx").onclick = close;
+  m.querySelectorAll(".tab").forEach(b => b.onclick = () => { mode = b.dataset.m; m.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t===b)); $("#pf").hidden = mode!=="file"; $("#pp").hidden = mode!=="paste"; });
+  const key = g => norm(g.name)+"|"+norm(g.company);
+  function pv(){
+    const box = $("#pv"); if (!pending.length){ box.innerHTML = ""; return; }
+    const have = new Set(guests.map(key)), seen = new Set();
+    const dup = pending.map(g => { const k = key(g), d = have.has(k) || seen.has(k); seen.add(k); return d; });
+    const nd = dup.filter(Boolean).length, n = skip ? pending.length-nd : pending.length;
+    box.innerHTML = `<p style="margin:14px 0 6px"><b>พบ ${pending.length} รายชื่อ</b>${nd?` <span class="tag no">ซ้ำกับที่มีอยู่/ในชุดนี้ ${nd}</span>`:""}</p>
+      ${nd?`<label style="display:flex;gap:8px;align-items:center;margin:6px 0;color:var(--ink)"><input type="checkbox" id="sk" ${skip?"checked":""} style="width:auto"> ข้ามรายชื่อที่ซ้ำ (ชื่อและบริษัทเหมือนกัน)</label>`:""}
+      <div class="tw" style="margin:8px 0 14px"><table><thead><tr><th>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>เบอร์โทรศัพท์</th><th>E-mail</th><th>ชื่อบริษัท</th><th>กลุ่มธุรกิจ</th></tr></thead><tbody>
+      ${pending.slice(0,5).map(g => `<tr>${ORDER.map(f => `<td>${esc(g[f])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      ${pending.length>5?`<p class="hint">แสดง 5 รายการแรกจากทั้งหมด ${pending.length}</p>`:""}
+      <button class="btn block" id="go" ${n?"":"disabled"}>นำเข้า ${n} รายชื่อ</button>`;
+    const sk = $("#sk"); if (sk) sk.onchange = () => { skip = sk.checked; pv(); };
+    $("#go").onclick = async () => {
+      let mx = Math.max(0,...guests.map(x => parseInt(x.seq)||0));
+      const items = pending.filter((g,i) => !(skip && dup[i])).map(g => ({...g, seq: g.seq || String(++mx)}));
+      try { await DB.bulk(items); toast(`นำเข้า ${items.length} รายชื่อแล้ว`); close(); } catch(e){ console.error(e); toast("นำเข้าไม่สำเร็จ"); }
+    };
+  }
+  const set = list => { pending = list; if (!list.length && ($("#ta").value.trim() || $("#file").value)) $("#pv").innerHTML = `<p class="hint">ไม่พบรายชื่อที่นำเข้าได้ ตรวจสอบหัวคอลัมน์หรือรูปแบบข้อมูล</p>`; else pv(); };
+  $("#file").onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader(), csv = /\.csv$/i.test(f.name);
+    r.onload = ev => { try { set(parseRows(toAoa(csv ? XLSX.read(ev.target.result,{type:"string",raw:true}) : XLSX.read(ev.target.result,{type:"array"})))); } catch(err){ console.error(err); toast("อ่านไฟล์ไม่ได้"); } };
+    csv ? r.readAsText(f,"utf-8") : r.readAsArrayBuffer(f);
+  };
+  let tm; $("#ta").oninput = () => { clearTimeout(tm); tm = setTimeout(() => { const t = $("#ta").value.trim(); if (!t) return set([]); try { set(parseRows(toAoa(XLSX.read(t,{type:"string",raw:true})))); } catch(err){ toast("อ่านข้อมูลไม่ได้"); } }, 300); };
+}
+
+
+DB.sub(list => { guests = list; dash(); });
+</script>
+</body>
+</html>

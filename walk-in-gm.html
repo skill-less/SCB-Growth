@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Station 2: Walk-in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-orange-50 text-gray-800">
+  <div class="max-w-md mx-auto min-h-screen shadow-md bg-white relative p-6">
+    
+    <div id="view-form">
+      <h2 class="text-2xl font-bold text-orange-700 mb-6 text-center">Station 2: Walk-in</h2>
+      <form id="walkinForm" class="space-y-4 bg-white">
+        <input id="w-name" class="w-full p-3 border rounded-lg bg-gray-50" required placeholder="ชื่อ-นามสกุล *">
+        <input id="w-phone" class="w-full p-3 border rounded-lg bg-gray-50" placeholder="เบอร์โทรศัพท์">
+        <input id="w-email" class="w-full p-3 border rounded-lg bg-gray-50" type="email" placeholder="E-mail">
+        <input id="w-company" class="w-full p-3 border rounded-lg bg-gray-50" placeholder="ชื่อบริษัท">
+        <input id="w-group" class="w-full p-3 border rounded-lg bg-gray-50" placeholder="กลุ่มธุรกิจ">
+        <div class="pt-4">
+           <button type="submit" class="w-full p-4 bg-orange-600 text-white rounded-xl text-lg font-bold shadow-md">Check in & บันทึก</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- หน้าสำเร็จ -->
+    <div id="view-success" class="absolute inset-0 bg-green-50 p-6 flex flex-col items-center justify-center text-center" style="display: none;">
+      <h1 class="text-3xl font-bold text-green-700 mb-4">บันทึกสำเร็จ</h1>
+      <p id="s-name" class="text-2xl font-bold mb-2">-</p>
+      <p id="s-company" class="text-xl text-gray-700">-</p>
+      <button onclick="resetForm()" class="mt-8 p-3 bg-blue-600 text-white rounded-lg px-8">คนต่อไป (Next)</button>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { db } from './firebase-config.js';
+    import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    document.getElementById('walkinForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newData = {
+        fullName: document.getElementById('w-name').value,
+        phone: document.getElementById('w-phone').value,
+        email: document.getElementById('w-email').value,
+        company: document.getElementById('w-company').value,
+        businessGroup: document.getElementById('w-group').value,
+        status: 'checked_in',
+        isWalkIn: true, 
+        checkInTime: serverTimestamp()
+      };
+      
+      await addDoc(collection(db, "attendees"), newData);
+      
+      document.getElementById('s-name').innerText = newData.fullName;
+      document.getElementById('s-company').innerText = newData.company || '-';
+      document.getElementById('view-form').style.display = 'none';
+      document.getElementById('view-success').style.display = 'flex';
+    });
+
+    window.resetForm = () => {
+      document.getElementById('walkinForm').reset();
+      document.getElementById('view-success').style.display = 'none';
+      document.getElementById('view-form').style.display = 'block';
+    };
+  </script>
+</body>
+</html>

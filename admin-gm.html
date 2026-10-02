@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 p-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-3xl font-bold">Admin Panel</h2>
+      <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow font-bold">Export Excel (ตาม Filter ที่เลือก)</button>
+    </div>
+
+    <!-- สรุปตัวเลข (4 กล่อง) -->
+    <div class="grid grid-cols-4 gap-4 mb-8 text-center">
+      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500"><p class="text-sm text-gray-500">รวมทั้งหมด</p><p id="d-total" class="text-3xl font-bold">0</p></div>
+      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500"><p class="text-sm text-green-700">Check in แล้ว (ลงล่วงหน้า)</p><p id="d-checked" class="text-3xl font-bold text-green-700">0</p></div>
+      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500"><p class="text-sm text-orange-700">แขก Walk-in</p><p id="d-walkin" class="text-3xl font-bold text-orange-700">0</p></div>
+      <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500"><p class="text-sm text-red-700">ยังไม่มา</p><p id="d-pending" class="text-3xl font-bold text-red-700">0</p></div>
+    </div>
+
+    <div class="flex flex-col md:flex-row gap-6">
+      <!-- ตาราง Dashboard -->
+      <div class="w-full md:w-2/3 bg-white rounded-lg shadow p-4">
+        <div class="flex mb-4 gap-1">
+          <button onclick="switchTab('checked_in')" id="tab-checked" class="flex-1 py-2 text-center font-bold bg-blue-600 text-white rounded">ที่มางานทั้งหมด</button>
+          <button onclick="switchTab('walkin_only')" id="tab-walkin" class="flex-1 py-2 text-center font-bold bg-gray-200 text-gray-700 rounded">Walk-in อย่างเดียว</button>
+          <button onclick="switchTab('pending')" id="tab-pending" class="flex-1 py-2 text-center font-bold bg-gray-200 text-gray-700 rounded">ยังไม่มา</button>
+        </div>
+        <div class="overflow-y-auto h-[600px]">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 border-b sticky top-0">
+                <th class="p-3">ชื่อ-นามสกุล</th>
+                <th class="p-3">บริษัท</th>
+                <th class="p-3">ประเภท</th>
+                <th class="p-3">สถานะ / เวลา</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ส่วน Import -->
+      <div class="w-full md:w-1/3 bg-white rounded-lg shadow p-4 h-fit">
+        <h3 class="text-xl font-bold mb-4">เพิ่มรายชื่อเข้าฐานข้อมูล</h3>
+        
+        <div class="mb-6 p-4 border rounded bg-gray-50">
+          <h4 class="font-bold mb-2">วิธีที่ 1: นำเข้าไฟล์ Excel (.xlsx, .csv)</h4>
+          <input type="file" id="fileImport" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 mb-2" />
+        </div>
+
+        <div class="p-4 border rounded bg-gray-50">
+          <h4 class="font-bold mb-2">วิธีที่ 2: Copy & Paste จาก Excel</h4>
+          <textarea id="textImport" rows="6" class="w-full p-2 border rounded text-sm mb-2" placeholder="คอลัมน์: ลำดับ | ชื่อ | เบอร์ | E-mail | บริษัท | ธุรกิจ"></textarea>
+          <button onclick="processTextImport()" class="w-full bg-blue-600 text-white py-2 rounded font-bold">บันทึกข้อมูล</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase-config.js';
+    import { collection, doc, serverTimestamp, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    let dashData = [];
+    let currentTab = 'checked_in';
+    let currentDisplayData = []; // เก็บตัวแปรสำหรับ Export
+
+    onSnapshot(collection(db, "attendees"), (snapshot) => {
+      dashData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderDashboard();
+    });
+
+    window.switchTab = (tab) => {
+      currentTab = tab;
+      document.getElementById('tab-checked').className = `flex-1 py-2 font-bold rounded ${tab === 'checked_in' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
+      document.getElementById('tab-walkin').className = `flex-1 py-2 font-bold rounded ${tab === 'walkin_only' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
+      document.getElementById('tab-pending').className = `flex-1 py-2 font-bold rounded ${tab === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`;
+      renderDashboard();
+    };
+
+    function renderDashboard() {
+      const walkIns = dashData.filter(a => a.isWalkIn);
+      const preRegGuests = dashData.filter(a => !a.isWalkIn);
+      const checkedInPreReg = preRegGuests.filter(a => a.status === 'checked_in');
+      const pendingPreReg = preRegGuests.filter(a => a.status === 'pending' || !a.status);
+
+      document.getElementById('d-total').innerText = dashData.length;
+      document.getElementById('d-checked').innerText = checkedInPreReg.length;
+      document.getElementById('d-walkin').innerText = walkIns.length;
+      document.getElementById('d-pending').innerText = pendingPreReg.length;
+
+      // กรองข้อมูลตาม Tab ที่เลือก
+      if (currentTab === 'checked_in') {
+        currentDisplayData = dashData.filter(a => a.status === 'checked_in'); // ทั้งหมดที่มางาน
+      } else if (currentTab === 'walkin_only') {
+        currentDisplayData = walkIns; // Walk-in อย่างเดียว
+      } else {
+        currentDisplayData = pendingPreReg; // ยังไม่มา
+      }
+
+      const tbody = document.getElementById('dashboard-table-body');
+      
+      tbody.innerHTML = currentDisplayData.map(g => {
+        const timeStr = g.checkInTime ? new Date(g.checkInTime.toDate()).toLocaleTimeString('th-TH') + ' น.' : '';
+        const statusHtml = g.status === 'checked_in' 
+          ? `<span class="text-green-600 font-medium">[✅ เช็คอินแล้ว] ${timeStr}</span>` 
+          : `<span class="text-gray-400">[⏳ ยังไม่มา]</span>`;
+          
+        const typeHtml = g.isWalkIn 
+          ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs">Walk-in</span>` 
+          : `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">มีรายชื่อ</span>`;
+
+        return `
+          <tr class="border-b hover:bg-gray-50">
+            <td class="p-3">${g.fullName || '-'}</td>
+            <td class="p-3">${g.company || '-'}</td>
+            <td class="p-3">${typeHtml}</td>
+            <td class="p-3">${statusHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    window.exportExcel = () => {
+      // Export เฉพาะข้อมูลใน Tab ปัจจุบัน (currentDisplayData)
+      if (currentDisplayData.length === 0) return alert('ไม่มีข้อมูลสำหรับ Export');
+      
+      const exportData = currentDisplayData.map((a, i) => ({
+        'ลำดับ': i + 1,
+        'ชื่อ-นามสกุล': a.fullName || '',
+        'เบอร์โทรศัพท์': a.phone || '',
+        'E-mail': a.email || '',
+        'ชื่อบริษัท': a.company || '',
+        'กลุ่มธุรกิจ': a.businessGroup || '',
+        'ประเภท': a.isWalkIn ? 'Walk-in' : 'ลงทะเบียนล่วงหน้า',
+        'สถานะ': a.status === 'checked_in' ? 'เช็คอินแล้ว' : 'ยังไม่มา',
+        'เวลาเช็คอิน': a.checkInTime ? new Date(a.checkInTime.toDate()).toLocaleTimeString('th-TH') : '-'
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
+      XLSX.writeFile(wb, `Event_Report_${currentTab}.xlsx`);
+    };
+
+    // --- Import Logic ---
+    async function saveBatchToFirestore(attendeesArray) {
+      if(attendeesArray.length === 0) return alert('ไม่พบข้อมูล');
+      if(!confirm(`ต้องการนำเข้าข้อมูล ${attendeesArray.length} รายการ ใช่หรือไม่?`)) return;
+
+      try {
+        const batch = writeBatch(db);
+        let count = 0;
+        attendeesArray.forEach(person => {
+          if(!person.fullName) return;
+          const newDocRef = doc(collection(db, "attendees"));
+          batch.set(newDocRef, { ...person, status: 'pending', isWalkIn: false });
+          count++;
+        });
+        await batch.commit();
+        alert(`นำเข้าข้อมูลสำเร็จ ${count} รายการ!`);
+        document.getElementById('textImport').value = '';
+        document.getElementById('fileImport').value = '';
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    document.getElementById('fileImport').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+        
+        const parsedData = [];
+        for(let i = 1; i < json.length; i++) {
+          const row = json[i];
+          if(row.length > 0 && row[1]) {
+            parsedData.push({
+              fullName: String(row[1] || '').trim(),
+              phone: String(row[2] || '').trim(),
+              email: String(row[3] || '').trim(),
+              company: String(row[4] || '').trim(),
+              businessGroup: String(row[5] || '').trim(),
+            });
+          }
+        }
+        saveBatchToFirestore(parsedData);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    window.processTextImport = () => {
+      const text = document.getElementById('textImport').value;
+      if(!text.trim()) return alert('กรุณาวางข้อมูลก่อน');
+      const rows = text.trim().split('\n');
+      const parsedData = [];
+      rows.forEach(row => {
+        const cols = row.split('\t');
+        if(cols.length >= 2 && cols[1].trim() !== '') {
+          parsedData.push({
+            fullName: cols[1]?.trim() || '',
+            phone: cols[2]?.trim() || '',
+            email: cols[3]?.trim() || '',
+            company: cols[4]?.trim() || '',
+            businessGroup: cols[5]?.trim() || ''
+          });
+        }
+      });
+      saveBatchToFirestore(parsedData);
+    };
+
+    // ทำให้กล่อง Text Import สามารถกดปุ่ม Tab ได้
+    document.getElementById('textImport').addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+
+        // แทรก Tab (\t) ตรงตำแหน่งที่เคอร์เซอร์อยู่
+        this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
+
+        // เลื่อนเคอร์เซอร์ไปหลัง Tab
+        this.selectionStart = this.selectionEnd = start + 1;
+      }
+    });
+  </script>
+</body>
+</html>
