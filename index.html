@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ลงทะเบียน LOGISTICS GROWTH 2027</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#f4f5f1;--card:#fff;--ink:#17231f;--mute:#66736d;--line:#dde2dc;--brand:#6b2fa0;--brand2:#54247f;--gold:#e8a317;--red:#b3392f;--ok:#1f7a4d}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:'IBM Plex Sans Thai',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:560px;margin:0 auto;padding:20px 18px 40px}
+.wrap.wide{max-width:1100px}
+h1{font-size:30px;line-height:1.25;margin:0 0 8px;font-weight:700}
+h2{font-size:22px;margin:0 0 14px;font-weight:600}
+p.sub{color:var(--mute);margin:0 0 24px}
+.btn{font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px 22px;cursor:pointer;background:var(--brand);color:#fff;min-height:52px;font-size:18px}
+.btn:hover{background:var(--brand2)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.ghost:hover{background:var(--line)}
+.btn.danger{background:transparent;color:var(--red);border:1.5px solid var(--red)}
+.btn.gold{background:var(--gold);color:#241a00}
+.btn.sm{min-height:38px;padding:6px 14px;font-size:15px;border-radius:9px}
+.btn.block{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
+input,select{font:inherit;width:100%;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:18px}
+input:focus,.btn:focus-visible,button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+label{display:block;font-size:15px;color:var(--mute);margin:14px 0 5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+.hero{min-height:88vh;display:flex;flex-direction:column;justify-content:center}
+.hero .mark{width:64px;height:64px;border-radius:18px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:32px;margin-bottom:24px}
+.hero h1{font-size:40px}
+.ac{position:relative}
+.list{margin-top:10px;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-top:0;font:inherit;color:inherit}
+.item:last-child{border-bottom:0}
+.item:hover,.item:focus-visible{background:var(--bg)}
+.item b{display:block;font-weight:600}.item small{color:var(--mute)}
+.tag{font-size:13px;padding:2px 10px;border-radius:99px;background:var(--line);color:var(--mute);white-space:nowrap}
+.tag.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.tag.no{background:color-mix(in srgb,var(--gold) 25%,transparent);color:var(--ink)}
+dl{margin:0 0 20px;display:grid;grid-template-columns:110px 1fr;gap:10px 12px}
+dt{color:var(--mute)}dd{margin:0;font-weight:600;word-break:break-word}
+.warn{background:color-mix(in srgb,var(--gold) 22%,transparent);border-radius:10px;padding:10px 14px;margin-bottom:16px}
+.welcome{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:var(--brand);color:#fff;margin:0;padding:30px}
+.welcome .tick{font-size:70px;line-height:1}
+.welcome h1{font-size:44px;margin:14px 0 4px}.welcome p{font-size:28px;margin:0 0 30px;opacity:.92}
+.welcome .btn{background:#fff;color:#6b2fa0}
+.welcome{background:#6b2fa0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
+.link{background:none;border:0;color:var(--brand);font:inherit;cursor:pointer;padding:4px 0;text-decoration:underline}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0 20px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stat span{color:var(--mute);font-size:15px}.stat b{display:block;font-size:38px;line-height:1.1}
+.bar{height:10px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:18px}.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{font:inherit;border:1.5px solid var(--line);background:transparent;color:var(--ink);padding:9px 18px;border-radius:99px;cursor:pointer}
+.tab[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{cursor:pointer;user-select:none;color:var(--mute);font-weight:500;position:sticky;top:0;background:var(--card)}
+th:hover{color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:12px;z-index:9}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px;z-index:8;overflow:auto}
+.dlg{background:var(--card);border-radius:16px;padding:22px;width:100%;max-width:720px;max-height:92vh;overflow:auto}
+textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:16px;resize:vertical}
+.hint{color:var(--mute);font-size:14px;margin:8px 0}
+.demo{background:var(--gold);color:#241a00;font-size:14px;text-align:center;padding:5px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น — ใส่ค่า firebaseConfig ในไฟล์เพื่อใช้งานจริง</div>
+<div id="app"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ============ ตั้งค่า Firebase (Realtime Database) ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBiiV4i3gExoT-SbB6uGMeQGmslj34Y_mY",
+  authDomain: "selfcheckin69.firebaseapp.com",
+  databaseURL: "https://selfcheckin69-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "selfcheckin69",
+  storageBucket: "selfcheckin69.firebasestorage.app",
+  messagingSenderId: "148350658850",
+  appId: "1:148350658850:web:f9c9d459ea037c7fec9d7b"
+};
+const EVENT_NAME = "LOGISTICS GROWTH 2027";
+const VENUE = "หอประชุมมหิศร ธนาคารไทยพาณิชย์ สำนักงานใหญ่";
+/* โครงสร้าง: /guests/{id} = {seq,name,phone,email,company,group,checkedIn,checkedInAt,walkIn} */
+
+/* ============ Data layer ============ */
+const FIELDS = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]];
+let guests = [], listeners = [], DB;
+const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
+if (useFB) {
+  firebase.initializeApp(firebaseConfig);
+  const ref = firebase.database().ref("guests");
+  DB = {
+    sub(cb){ ref.on("value", s => { const v = s.val() || {}; cb(Object.entries(v).map(([id,g]) => ({...g,id}))); }, e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); }); },
+    update(id, o){ return ref.child(id).update(o); },
+    add(o){ const k = ref.push().key; return ref.child(k).set(o).then(()=>k); },
+    bulk(list){ const m = {}; list.forEach(g => m[ref.push().key] = g); return ref.update(m); }
+  };
+} else {
+  document.getElementById("demo").hidden = false;
+  const KEY = "checkin_guests_demo";
+  let store = JSON.parse(localStorage.getItem(KEY) || "null") || {
+    a1:{seq:"1",name:"สมชาย ใจดี",phone:"0812345678",email:"somchai@thaitech.co.th",company:"บริษัท ไทยเทค จำกัด",group:"ขนส่งสินค้า"},
+    a2:{seq:"2",name:"สมหญิง รักเรียน",phone:"0898765432",email:"somying@thaitech.co.th",company:"บริษัท ไทยเทค จำกัด",group:"ขนส่งสินค้า"},
+    a3:{seq:"3",name:"สมชาย มั่นคง",phone:"0861112222",email:"sc@example.com",company:"ธนาคารตัวอย่าง",group:"การเงิน"},
+    a4:{seq:"4",name:"Alice Wong",phone:"0823334444",email:"alice@globex.com",company:"Globex Asia",group:"คลังสินค้า"}
+  };
+  const save = () => { localStorage.setItem(KEY, JSON.stringify(store)); emit(); };
+  let emit = () => {};
+  DB = {
+    sub(cb){ emit = () => cb(Object.entries(store).map(([id,g]) => ({...g,id}))); emit(); },
+    update(id,o){ store[id] = {...store[id],...o}; save(); return Promise.resolve(); },
+    add(o){ const k = "g"+Date.now()+Math.random().toString(36).slice(2,6); store[k] = o; save(); return Promise.resolve(k); },
+    bulk(list){ list.forEach((g,i) => store["i"+Date.now()+i] = g); save(); return Promise.resolve(); }
+  };
+}
+DB.sub(list => { guests = list; if (view.name === "search") render(); });
+
+/* ============ Helpers ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const full = g => (g.name||"").trim() || "(ไม่ระบุชื่อ)";
+const fmt = t => t ? new Date(t).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"medium"}) : "";
+function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2500); }
+const norm = s => String(s||"").toLowerCase().replace(/\s+/g," ").trim();
+
+/* ============ Router ============ */
+let view = {name:"landing"}, wTimer;
+function go(name, data){ clearTimeout(wTimer); view = {name, ...data}; render(); window.scrollTo(0,0); }
+function render(){ ({landing,search,confirm:confirmV,edit,editSum,welcome}[view.name])(); }
+const A = html => { $("#app").innerHTML = html; };
+
+/* ---- Landing ---- */
+function landing(){
+  A(`<div class="wrap hero">
+    <div class="mark" aria-hidden="true">✓</div>
+    <h1>${esc(EVENT_NAME)}</h1>
+    <p class="sub">${esc(VENUE)}</p>
+    <button class="btn block" id="enter">Enter</button>
+  </div>`);
+  $("#enter").onclick = () => go("search",{q:""});
+}
+
+/* ---- Search ---- */
+function search(){
+  const q = view.q || "";
+  A(`<div class="wrap">
+    <div class="top"><button class="link" id="back">← กลับ</button><span></span></div>
+    <h2>ค้นหาชื่อของคุณ</h2>
+    <input id="q" type="search" autocomplete="off" placeholder="พิมพ์ชื่อ หรือ ชื่อบริษัท" value="${esc(q)}">
+    <div id="res"></div>
+  </div>`);
+  const inp = $("#q"); inp.focus(); inp.setSelectionRange(q.length,q.length);
+  $("#back").onclick = () => go("landing");
+  const draw = () => {
+    view.q = inp.value; const n = norm(inp.value); const box = $("#res");
+    if (!n) { box.innerHTML = ""; return; }
+    const hits = guests.filter(g => norm(g.name).includes(n) || norm(g.company).includes(n))
+      .sort((a,b)=> (a.company||"").localeCompare(b.company||"","th") || full(a).localeCompare(full(b),"th")).slice(0,50);
+    box.innerHTML = hits.length ? `<div class="list" role="listbox">${hits.map(g => `<button class="item" data-id="${g.id}"><span><b>${esc(full(g))}</b><small>${esc(g.company||"-")}</small></span>${g.checkedIn?'<span class="tag ok">เช็คอินแล้ว</span>':""}</button>`).join("")}</div>`
+      : `<p class="sub" style="margin-top:14px">ไม่พบรายชื่อที่ตรงกับ “${esc(inp.value)}”</p>`;
+    box.querySelectorAll(".item").forEach(b => b.onclick = () => go("confirm",{id:b.dataset.id}));
+  };
+  inp.oninput = draw; draw();
+}
+
+/* ---- Confirm ---- */
+function confirmV(){
+  const g = guests.find(x => x.id === view.id); if (!g) return go("search",{q:""});
+  A(`<div class="wrap"><h2>ยืนยันข้อมูลของคุณ</h2><div class="card">
+    ${g.checkedIn ? `<div class="warn">คุณเช็คอินไปแล้วเมื่อ ${esc(fmt(g.checkedInAt))}</div>` : ""}
+    <dl><dt>ชื่อ-นามสกุล</dt><dd>${esc(g.name)}</dd><dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd></dl>
+    <button class="btn block" id="ci">Check in</button>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="ed">แก้ไขข้อมูล</button><button class="btn danger" id="cn">Cancel</button></div>
+  </div></div>`);
+  $("#ci").onclick = () => checkIn(g.id, {});
+  $("#ed").onclick = () => go("edit",{id:g.id, draft:{name:g.name||"",phone:g.phone||"",email:g.email||""}});
+  $("#cn").onclick = () => go("search",{q:""});
+}
+async function checkIn(id, patch){
+  const g = guests.find(x => x.id === id);
+  const upd = {...patch, checkedIn:true, checkedInAt: g && g.checkedIn && !Object.keys(patch).length ? g.checkedInAt : Date.now()};
+  try { await DB.update(id, upd); go("welcome",{g:{...g,...upd}}); }
+  catch(e){ toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
+}
+
+/* ---- Edit ---- */
+function edit(){
+  const d = view.draft;
+  A(`<div class="wrap"><h2>แก้ไขข้อมูล</h2><div class="card">
+    <label>ชื่อ-นามสกุล</label><input id="f1" value="${esc(d.name)}">
+    <label>เบอร์โทรศัพท์</label><input id="f3" type="tel" inputmode="tel" value="${esc(d.phone)}">
+    <label>E-mail</label><input id="f4" type="email" inputmode="email" value="${esc(d.email)}">
+    <div class="row" style="margin-top:20px"><button class="btn ghost" id="bk">ย้อนกลับ</button><button class="btn" id="ok">ยืนยัน</button></div>
+  </div></div>`);
+  $("#bk").onclick = () => go("confirm",{id:view.id});
+  $("#ok").onclick = () => go("editSum",{id:view.id, draft:{name:$("#f1").value.trim(),phone:$("#f3").value.trim(),email:$("#f4").value.trim()}});
+}
+function editSum(){
+  const d = view.draft, g = guests.find(x => x.id === view.id) || {};
+  const row = (l,k) => `<dt>${l}</dt><dd>${esc(d[k]||"-")}${(g[k]||"")!==d[k]?' <span class="tag no">แก้ไข</span>':""}</dd>`;
+  A(`<div class="wrap"><h2>ตรวจสอบข้อมูลที่แก้ไข</h2><div class="card">
+    <dl>${row("ชื่อ-นามสกุล","name")}<dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd>${row("เบอร์โทรศัพท์","phone")}${row("E-mail","email")}</dl>
+    <button class="btn block" id="sv">Save และ Check in</button>
+    <button class="btn ghost block" id="bk" style="margin-top:10px">กลับไปแก้ไข</button>
+  </div></div>`);
+  $("#bk").onclick = () => go("edit",{id:view.id,draft:d});
+  $("#sv").onclick = () => checkIn(view.id, d);
+}
+
+/* ---- Welcome ---- */
+function welcome(){
+  const g = view.g;
+  A(`<div class="welcome"><div class="tick" aria-hidden="true">✓</div>
+    <h1>ยินดีต้อนรับ คุณ${esc(full(g))}</h1>
+    ${g.company ? `<p>บริษัท ${esc(g.company)}</p>` : "<p></p>"}
+    <button class="btn" id="dn">เสร็จสิ้น</button></div>`);
+  $("#dn").onclick = () => go("landing");
+  wTimer = setTimeout(() => go("landing"), 7000);
+}
+
+render();
+</script>
+</body>
+</html>
