@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ลงทะเบียน LOGISTICS GROWTH 2027</title>
+<title>ลงทะเบียน GROWTH IN LOGISTICS2027</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -145,7 +145,6 @@ table{font-size:var(--table-fs)}
 </style>
 </head>
 <body>
-<div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น — ใส่ค่า firebaseConfig ในไฟล์เพื่อใช้งานจริง</div>
 <header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
 <div id="toast" class="toast" hidden></div>
@@ -161,7 +160,7 @@ const firebaseConfig = {
   messagingSenderId: "148350658850",
   appId: "1:148350658850:web:f9c9d459ea037c7fec9d7b"
 };
-const EVENT_NAME = "LOGISTICS GROWTH 2027";
+const EVENT_NAME = "GROWTH IN LOGISTICS 2027";
 const VENUE = "หอประชุมมหิศร ธนาคารไทยพาณิชย์ สำนักงานใหญ่";
 /* โครงสร้าง: /guests/{id} = {seq,name,phone,email,company,group,checkedIn,checkedInAt,walkIn} */
 
@@ -224,7 +223,7 @@ function search(){
   const q = view.q || "", sq = view.sq || "";
   A(`<div class="wrap">
     <div class="top"><button class="link" id="back">← กลับ</button><span></span></div>
-    <h2>ค้นหาชื่อของคุณ</h2>
+    <h2>ค้นหารายชื่อ</h2>
     <div class="row" style="flex-wrap:nowrap"><input id="q" type="text" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์ชื่อของคุณ" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
     <div id="res"></div>
   </div>`);

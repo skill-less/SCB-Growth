@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ลงทะเบียนแขกหน้างาน</title>
+<title>ลงทะเบียน GROWTH IN LOGISTICS 2027</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -169,7 +169,8 @@ function validate(o){
 function form(){
   clearTimeout(wTimer);
   const attr = k => k==="phone" ? 'type="tel" inputmode="tel"' : k==="email" ? 'type="email" inputmode="email"' : 'type="text"';
-  $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียนแขกหน้างาน</h1><p class="sub">${esc(EVENT_NAME)} — กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
+  // $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียน</h1><p class="sub">${esc(EVENT_NAME)} — กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
+      $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียน</h1><p class="sub">กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
     ${FIELDS.map(([k,l]) => `<label for="n_${k}">${l} <span style="color:var(--red)">*</span></label><input id="n_${k}" ${attr(k)} autocomplete="off" value="${esc(draft[k]||"")}" ${errs[k]?'aria-invalid="true"':""}>${errs[k]?`<p class="err" role="alert">${errs[k]}</p>`:""}`).join("")}
     <button class="btn block" id="nx" style="margin-top:22px">ตรวจสอบข้อมูล</button></div></div>`;
   const first = REQ.find(k => errs[k]); $("#n_"+(first||"name")).focus();

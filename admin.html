@@ -93,7 +93,7 @@ input[aria-invalid=true]{border-color:var(--red)}
 :root{
   --banner-w:440px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
   --banner-top:12px;         /* ระยะห่างเหนือแบนเนอร์ */
-  --content-w:1280px;        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
+  --content-w:min(1800px,98vw);        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
   --btn-h:52px;              /* ความสูงปุ่มปกติ */
   --btn-fs:18px;             /* ขนาดตัวอักษรปุ่มปกติ */
   --btn-sm-h:38px;           /* ความสูงปุ่มเล็ก (ในตาราง/แถบบน) */
@@ -117,6 +117,13 @@ h1{font-size:var(--h1-fs)}h2{font-size:var(--h2-fs)}
 table{font-size:var(--table-fs)}
 .welcome h1{font-size:var(--welcome-name-fs)}.welcome p{font-size:var(--welcome-co-fs)}
 @media(max-width:600px){:root{--welcome-name-fs:34px;--stat-fs:30px}}
+/* ตาราง admin: ให้เห็นทุกคอลัมน์บนจอ PC (ข้อความยาวตัดขึ้นบรรทัดใหม่แทนการเลื่อนข้าง) */
+.tw{overflow-x:auto}
+table{table-layout:auto}
+th,td{padding:10px 10px;white-space:normal;overflow-wrap:break-word;vertical-align:middle}
+th{white-space:nowrap}
+td .btn{white-space:nowrap}
+.wrap.wide{padding-left:14px;padding-right:14px}
 </style>
 </head>
 <body>
