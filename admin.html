@@ -86,6 +86,37 @@ input[aria-invalid=true]{border-color:var(--red)}
 @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* =====================================================================
+   ปรับขนาดที่นี่ — แก้ตัวเลขใน :root ด้านล่างได้เลย (หน่วย px / rem)
+   ===================================================================== */
+:root{
+  --banner-w:440px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
+  --banner-top:12px;         /* ระยะห่างเหนือแบนเนอร์ */
+  --content-w:1280px;        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
+  --btn-h:52px;              /* ความสูงปุ่มปกติ */
+  --btn-fs:18px;             /* ขนาดตัวอักษรปุ่มปกติ */
+  --btn-sm-h:38px;           /* ความสูงปุ่มเล็ก (ในตาราง/แถบบน) */
+  --btn-sm-fs:15px;          /* ตัวอักษรปุ่มเล็ก */
+  --input-fs:18px;           /* ตัวอักษรช่องกรอก */
+  --h1-fs:30px;              /* หัวข้อใหญ่ */
+  --h2-fs:22px;              /* หัวข้อรอง */
+  --stat-fs:38px;            /* ตัวเลขการ์ดสรุป (admin) */
+  --table-fs:15px;           /* ตัวอักษรในตาราง (admin) */
+  --welcome-name-fs:44px;    /* ข้อความต้อนรับ: ชื่อ */
+  --welcome-co-fs:28px;      /* ข้อความต้อนรับ: บริษัท */
+}
+.banner{max-width:none;padding:var(--banner-top) 12px 0}
+.banner img{width:100%;max-width:var(--banner-w);height:auto;margin:0 auto}
+.wrap,.wrap.wide{max-width:var(--content-w)}
+.btn{min-height:var(--btn-h);font-size:var(--btn-fs)}
+.btn.sm{min-height:var(--btn-sm-h);font-size:var(--btn-sm-fs)}
+input,select{font-size:var(--input-fs)}
+h1{font-size:var(--h1-fs)}h2{font-size:var(--h2-fs)}
+.stat b{font-size:var(--stat-fs)}
+table{font-size:var(--table-fs)}
+.welcome h1{font-size:var(--welcome-name-fs)}.welcome p{font-size:var(--welcome-co-fs)}
+@media(max-width:600px){:root{--welcome-name-fs:34px;--stat-fs:30px}}
 </style>
 </head>
 <body>
@@ -156,25 +187,25 @@ const norm = s => String(s||"").toLowerCase().replace(/\s+/g," ").trim();
 const A = html => { $("#app").innerHTML = html; };
 let view = {name:"dash"};
 /* ---- Dashboard ---- */
-let tab = "in", sortK = "seq", sortD = 1, filt = "", wOnly = false;
+let tab = "all", sortK = "seq", sortD = 1, filt = "", wOnly = false;
 function dash(){
   const base = wOnly ? guests.filter(g => g.walkIn) : guests, nW = guests.filter(g => g.walkIn).length;
   const inn = base.filter(g => g.checkedIn), out = base.filter(g => !g.checkedIn);
   const nIn = guests.filter(g => g.checkedIn).length, pct = guests.length ? Math.round(nIn/guests.length*100) : 0;
-  const rows = (tab==="in" ? inn : out).filter(g => !filt || norm(Object.values(g).join(" ")).includes(norm(filt)))
-    .sort((a,b) => { const x=a[sortK]??"", y=b[sortK]??""; const nx=parseFloat(x), ny=parseFloat(y); return (sortK==="seq"||typeof x==="number" ? (nx||0)-(ny||0) : String(x).localeCompare(String(y),"th")) * sortD; });
-  const cols = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]].concat(tab==="in"?[["checkedInAt","เวลาเช็คอิน"]]:[]);
+  const rows = (tab==="in" ? inn : tab==="out" ? out : base).filter(g => !filt || norm(Object.values(g).join(" ")).includes(norm(filt)))
+    .sort((a,b) => { const x=sortK==="checkedIn"?(a.checkedIn?1:0):(a[sortK]??""), y=sortK==="checkedIn"?(b.checkedIn?1:0):(b[sortK]??""); const nx=parseFloat(x), ny=parseFloat(y); return (sortK==="seq"||typeof x==="number" ? (nx||0)-(ny||0) : String(x).localeCompare(String(y),"th")) * sortD; });
+  const cols = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]].concat(tab==="all"?[["checkedIn","สถานะ"]]:[]).concat(tab!=="out"?[["checkedInAt","เวลาเช็คอิน"]]:[]);
   A(`<div class="wrap wide">
     <div class="top"><h1 style="margin:0;font-size:26px">Dashboard</h1><div class="row" style="flex:none">
       <button class="btn ghost sm" id="imp">+ เพิ่มรายชื่อ</button><select id="expk" aria-label="ประเภทข้อมูลที่ export" style="width:auto;padding:6px 10px;font-size:15px;min-height:38px"><option value="all">ทั้งหมด (แยก sheet)</option><option value="in">เช็คอินแล้ว</option><option value="out">ยังไม่มา</option><option value="walk">Walk-in เท่านั้น</option></select><button class="btn sm" id="exp">Export Excel</button><button class="btn danger sm" id="rst">Reset ข้อมูล</button></div></div>
     <div class="stats"><div class="stat"><span>รวมทั้งหมด</span><b>${guests.length}</b></div><div class="stat"><span>Check in แล้ว</span><b style="color:var(--ok)">${nIn}</b></div><div class="stat"><span>ยังไม่ Check in</span><b>${guests.length-nIn}</b></div><div class="stat" id="wst" style="cursor:pointer"><span>แขก Walk-in</span><b style="color:var(--brand)">${nW}</b></div></div>
     <div class="bar" aria-label="${pct}%"><i style="width:${pct}%"></i></div>
     <div class="row" style="align-items:center;margin-bottom:12px">
-      <div class="tabs" role="tablist" style="margin:0;flex:none"><button class="tab" role="tab" data-t="in" aria-selected="${tab==="in"}">เช็คอินแล้ว (${inn.length})</button><button class="tab" role="tab" data-t="out" aria-selected="${tab==="out"}">ยังไม่มา (${out.length})</button><button class="tab" id="wo" aria-pressed="${wOnly}">เฉพาะ Walk-in (${nW})</button></div>
+      <div class="tabs" role="tablist" style="margin:0;flex:none;flex-wrap:wrap"><button class="tab" role="tab" data-t="all" aria-selected="${tab==="all"}">รายชื่อทั้งหมด (${base.length})</button><button class="tab" role="tab" data-t="in" aria-selected="${tab==="in"}">เช็คอินแล้ว (${inn.length})</button><button class="tab" role="tab" data-t="out" aria-selected="${tab==="out"}">ยังไม่มา (${out.length})</button><button class="tab" id="wo" aria-pressed="${wOnly}">เฉพาะ Walk-in (${nW})</button></div>
       <input id="flt" type="search" placeholder="กรองรายชื่อ" value="${esc(filt)}" style="max-width:280px;padding:9px 14px;font-size:16px">
     </div>
     <div class="tw"><table><thead><tr>${cols.map(([k,l]) => `<th data-k="${k}">${l}${sortK===k?(sortD>0?" ▲":" ▼"):""}</th>`).join("")}<th></th></tr></thead>
-    <tbody>${rows.map(g => `<tr>${cols.map(([k]) => `<td>${k==="checkedInAt"?esc(fmt(g[k])):esc(g[k]||"")}</td>`).join("")}<td style="white-space:nowrap"><button class="btn ghost sm" data-ed="${g.id}">แก้ไข</button> ${tab==="in"?`<button class="btn ghost sm" data-un="${g.id}">ยกเลิกเช็คอิน</button>`:`<button class="btn sm" data-ci="${g.id}">เช็คอินให้</button>`}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--mute)">ไม่มีรายการ</td></tr>`}</tbody></table></div>
+    <tbody>${rows.map(g => `<tr>${cols.map(([k]) => `<td>${k==="checkedInAt"?esc(fmt(g[k])):k==="checkedIn"?(g.checkedIn?'<span class="tag ok">เช็คอินแล้ว</span>':'<span class="tag no">ยังไม่มา</span>'):esc(g[k]||"")}</td>`).join("")}<td style="white-space:nowrap"><button class="btn ghost sm" data-ed="${g.id}">แก้ไข</button> ${g.checkedIn?`<button class="btn ghost sm" data-un="${g.id}">ยกเลิกเช็คอิน</button>`:`<button class="btn sm" data-ci="${g.id}">เช็คอินให้</button>`}</td></tr>`).join("") || `<tr><td colspan="10" style="color:var(--mute)">ไม่มีรายการ</td></tr>`}</tbody></table></div>
   </div>`);
   document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.t; dash(); });
   $("#wst").onclick = () => { wOnly = !wOnly; dash(); };

@@ -80,6 +80,37 @@ input[aria-invalid=true]{border-color:var(--red)}
 .demo{background:var(--gold);color:#241a00;font-size:14px;text-align:center;padding:5px}
 @media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* =====================================================================
+   ปรับขนาดที่นี่ — แก้ตัวเลขใน :root ด้านล่างได้เลย (หน่วย px / rem)
+   ===================================================================== */
+:root{
+  --banner-w:536px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
+  --banner-top:12px;         /* ระยะห่างเหนือแบนเนอร์ */
+  --content-w:560px;        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
+  --btn-h:52px;              /* ความสูงปุ่มปกติ */
+  --btn-fs:18px;             /* ขนาดตัวอักษรปุ่มปกติ */
+  --btn-sm-h:38px;           /* ความสูงปุ่มเล็ก (ในตาราง/แถบบน) */
+  --btn-sm-fs:15px;          /* ตัวอักษรปุ่มเล็ก */
+  --input-fs:18px;           /* ตัวอักษรช่องกรอก */
+  --h1-fs:30px;              /* หัวข้อใหญ่ */
+  --h2-fs:22px;              /* หัวข้อรอง */
+  --stat-fs:38px;            /* ตัวเลขการ์ดสรุป (admin) */
+  --table-fs:15px;           /* ตัวอักษรในตาราง (admin) */
+  --welcome-name-fs:44px;    /* ข้อความต้อนรับ: ชื่อ */
+  --welcome-co-fs:28px;      /* ข้อความต้อนรับ: บริษัท */
+}
+.banner{max-width:none;padding:var(--banner-top) 12px 0}
+.banner img{width:100%;max-width:var(--banner-w);height:auto;margin:0 auto}
+.wrap,.wrap.wide{max-width:var(--content-w)}
+.btn{min-height:var(--btn-h);font-size:var(--btn-fs)}
+.btn.sm{min-height:var(--btn-sm-h);font-size:var(--btn-sm-fs)}
+input,select{font-size:var(--input-fs)}
+h1{font-size:var(--h1-fs)}h2{font-size:var(--h2-fs)}
+.stat b{font-size:var(--stat-fs)}
+table{font-size:var(--table-fs)}
+.welcome h1{font-size:var(--welcome-name-fs)}.welcome p{font-size:var(--welcome-co-fs)}
+@media(max-width:600px){:root{--welcome-name-fs:34px;--stat-fs:30px}}
 </style>
 </head>
 <body>
@@ -164,7 +195,6 @@ function summary(){
 function welcome(g){
   $("#app").innerHTML = `<div class="welcome"><div class="tick" aria-hidden="true">✓</div>
     <h1>ยินดีต้อนรับ คุณ${esc(g.name)}</h1><p>${esc(co(g.company))}</p></div>`;
-  wTimer = setTimeout(() => { draft = {}; errs = {}; form(); }, 7000);
 }
 form();
 </script>
