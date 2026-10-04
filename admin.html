@@ -13,7 +13,7 @@
 @media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
-body{font-family:'IBM Plex Sans Thai',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 .wrap{max-width:560px;margin:0 auto;padding:20px 18px 40px}
 .wrap.wide{max-width:1100px}
 h1{font-size:30px;line-height:1.25;margin:0 0 8px;font-weight:700}
@@ -88,9 +88,22 @@ input[aria-invalid=true]{border-color:var(--red)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* =====================================================================
+   ฟอนต์ DB HelvethaicaX
+   - ถ้าเครื่องติดตั้งฟอนต์นี้ไว้แล้ว จะใช้ได้ทันที (local)
+   - ถ้าไม่ได้ติดตั้ง ให้วางไฟล์ฟอนต์ไว้ที่โฟลเดอร์ fonts/ ข้างไฟล์ HTML ตามชื่อด้านล่าง
+     (ชื่อไฟล์แก้ได้ที่ url(...) ด้านล่าง)
+   ===================================================================== */
+@font-face{font-family:"DB HelvethaicaX";font-weight:400 500;font-style:normal;font-display:swap;
+  src:local("DB HelvethaicaX"),local("DBHelvethaicaX"),local("DB Helvethaica X"),
+      url("fonts/DBHelvethaicaX-Regular.woff2") format("woff2"),url("fonts/DBHelvethaicaX-Regular.ttf") format("truetype")}
+@font-face{font-family:"DB HelvethaicaX";font-weight:600 700;font-style:normal;font-display:swap;
+  src:local("DB HelvethaicaX Bold"),local("DBHelvethaicaX-Bold"),local("DB Helvethaica X Bold"),
+      url("fonts/DBHelvethaicaX-Bold.woff2") format("woff2"),url("fonts/DBHelvethaicaX-Bold.ttf") format("truetype")}
+/* =====================================================================
    ปรับขนาดที่นี่ — แก้ตัวเลขใน :root ด้านล่างได้เลย (หน่วย px / rem)
    ===================================================================== */
 :root{
+  --font:"DB HelvethaicaX","DB Helvethaica X","DB Helvethaica","IBM Plex Sans Thai",system-ui,sans-serif; /* ฟอนต์หลักของทั้งหน้า */
   --banner-w:440px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
   --banner-top:12px;         /* ระยะห่างเหนือแบนเนอร์ */
   --content-w:min(1800px,98vw);        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
@@ -127,7 +140,7 @@ td .btn{white-space:nowrap}
 </style>
 </head>
 <body>
-<div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น</div>
+<div id="demo" class="demo" hidden>ยังไม่ได้เชื่อมต่อฐานข้อมูล</div>
 <header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
 <div id="modal" hidden></div>
@@ -151,17 +164,33 @@ const VENUE = "หอประชุมมหิศร ธนาคารไท�
 const FIELDS = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]];
 let guests = [], listeners = [], DB;
 const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
+/* ข้อมูลแยก 2 ส่วน: /guests = สาธารณะ (ชื่อ บริษัท สถานะเช็คอิน) | /private = เฉพาะเจ้าหน้าที่ (เบอร์โทร อีเมล กลุ่มธุรกิจ) */
+const PRIVK = ["phone","email","group"];
+const splitPaths = (id, o, m) => { for (const k in o) m[(PRIVK.includes(k) ? "private/" : "guests/") + id + "/" + k] = o[k] === undefined ? null : o[k]; return m; };
 if (useFB) {
   firebase.initializeApp(firebaseConfig);
-  const ref = firebase.database().ref("guests");
+  const db = firebase.database(), root = db.ref();
+  let pubM = {}, prvM = {};
+  const merge = cb => cb(Object.keys(pubM).map(id => ({...pubM[id], ...(prvM[id]||{}), id})));
+  const errH = e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); };
   DB = {
-    sub(cb){ ref.on("value", s => { const v = s.val() || {}; cb(Object.entries(v).map(([id,g]) => ({...g,id}))); }, e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); }); },
-    update(id, o){ return ref.child(id).update(o); },
-    add(o){ const k = ref.push().key; return ref.child(k).set(o).then(()=>k); },
-    bulk(list){ const m = {}; list.forEach(g => m[ref.push().key] = g); return ref.update(m); },
-    async reset(kind){ if (kind==="all") return ref.set(null);
-      const m = {}; guests.forEach(g => { if (kind==="walkin") { if (g.walkIn) m[g.id] = null; } else { m[g.id+"/checkedIn"] = false; m[g.id+"/checkedInAt"] = null; } });
-      return Object.keys(m).length ? ref.update(m) : null; }
+    sub(cb){
+      db.ref("guests").on("value", s => { pubM = s.val() || {}; merge(cb); }, errH);
+      db.ref("private").on("value", s => { prvM = s.val() || {}; merge(cb); }, errH);
+    },
+    update(id, o){ return root.update(splitPaths(id, o, {})); },
+    add(o){ const k = db.ref("guests").push().key; return root.update(splitPaths(k, o, {})).then(() => k); },
+    bulk(list){ const m = {}; list.forEach(g => splitPaths(db.ref("guests").push().key, g, m)); return root.update(m); },
+    reset(kind){
+      if (kind === "all") return root.update({guests:null, "private":null});
+      const m = {};
+      guests.forEach(g => { if (kind === "walkin") { if (g.walkIn) { m["guests/"+g.id] = null; m["private/"+g.id] = null; } }
+        else { m["guests/"+g.id+"/checkedIn"] = false; m["guests/"+g.id+"/checkedInAt"] = null; } });
+      return Object.keys(m).length ? root.update(m) : null;
+    },
+    /* ข้อมูลเก่าที่เบอร์/อีเมล/กลุ่ม ยังอยู่ในส่วนสาธารณะ */
+    legacy(){ return Object.keys(pubM).filter(id => PRIVK.some(k => pubM[id][k] !== undefined)).length; },
+    migrate(){ const m = {}; Object.keys(pubM).forEach(id => PRIVK.forEach(k => { if (pubM[id][k] !== undefined) { m["private/"+id+"/"+k] = pubM[id][k]; m["guests/"+id+"/"+k] = null; } })); return root.update(m); }
   };
 } else {
   document.getElementById("demo").hidden = false;
@@ -205,6 +234,7 @@ function dash(){
   A(`<div class="wrap wide">
     <div class="top"><h1 style="margin:0;font-size:26px">Dashboard</h1><div class="row" style="flex:none">
       <button class="btn ghost sm" id="imp">+ เพิ่มรายชื่อ</button><select id="expk" aria-label="ประเภทข้อมูลที่ export" style="width:auto;padding:6px 10px;font-size:15px;min-height:38px"><option value="all">ทั้งหมด (แยก sheet)</option><option value="in">เช็คอินแล้ว</option><option value="out">ยังไม่มา</option><option value="walk">Walk-in เท่านั้น</option></select><button class="btn sm" id="exp">Export Excel</button><button class="btn danger sm" id="rst">Reset ข้อมูล</button></div></div>
+    
     <div class="stats"><div class="stat"><span>รวมทั้งหมด</span><b>${guests.length}</b></div><div class="stat"><span>Check in แล้ว</span><b style="color:var(--ok)">${nIn}</b></div><div class="stat"><span>ยังไม่ Check in</span><b>${guests.length-nIn}</b></div><div class="stat" id="wst" style="cursor:pointer"><span>แขก Walk-in</span><b style="color:var(--brand)">${nW}</b></div></div>
     <div class="bar" aria-label="${pct}%"><i style="width:${pct}%"></i></div>
     <div class="row" style="align-items:center;margin-bottom:12px">
@@ -257,13 +287,25 @@ function parseRows(aoa){
     if (/^[1-9]\d{8}$/.test(o.phone)) o.phone = "0"+o.phone; return o; }).filter(o => o.name || o.company);
 }
 const toAoa = wb => XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:"", raw:false});
+const GROUPS = ["ขนส่งภายในประเทศ","ผู้จัดการขนส่งสินค้า","ตัวแทนออกของ","สายเรือ / สายการบิน","คลังสินค้า","อื่น ๆ"];
+const OTHER = GROUPS.length - 1;
+/* ค่าที่เก็บในฐานข้อมูล: ข้อ 1-5 เก็บชื่อกลุ่ม, ข้อ 6 เก็บเป็น "อื่น ๆ: ข้อความที่กรอก" */
+const groupValue = (sel, other) => sel === "" || sel == null ? "" : +sel === OTHER ? (other ? "อื่น ๆ: " + other : "") : GROUPS[+sel];
+function parseGroup(v){
+  v = (v || "").trim(); if (!v) return {sel:"", other:"", legacy:false};
+  const i = GROUPS.indexOf(v); if (i >= 0 && i !== OTHER) return {sel:i, other:"", legacy:false};
+  const m = v.match(/^อื่น ๆ\s*:?\s*(.*)$/); if (m) return {sel:OTHER, other:m[1].trim(), legacy:false};
+  return {sel:OTHER, other:v, legacy:true};   /* ข้อความเดิมที่นำเข้าจาก Excel */
+}
 function openEdit(id){
   const g = guests.find(x => x.id === id); if (!g) return;
-  const m = $("#modal"), F = [["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]];
+  const m = $("#modal"), F = [["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"]], pg = parseGroup(g.group);
   m.hidden = false;
   m.innerHTML = `<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="แก้ไขข้อมูลแขก" style="max-width:520px">
     <div class="top"><h2 style="margin:0">แก้ไขข้อมูลแขก${g.seq?` (ลำดับ ${esc(g.seq)})`:""}</h2><button class="btn ghost sm" id="mx">ปิด</button></div>
     ${F.map(([k,l]) => `<label for="e_${k}">${l}</label><input id="e_${k}" value="${esc(g[k]||"")}" autocomplete="off" ${k==="phone"?'type="tel" inputmode="tel"':k==="email"?'type="email" inputmode="email"':""}>`).join("")}
+    <label for="e_gsel">กลุ่มธุรกิจ</label><select id="e_gsel"><option value="">— ไม่ระบุ —</option>${GROUPS.map((x,i) => `<option value="${i}" ${pg.sel===i?"selected":""}>${i+1}. ${x}</option>`).join("")}</select>
+    <input id="e_gother" placeholder="โปรดระบุกลุ่มธุรกิจ" value="${esc(pg.other)}" autocomplete="off" ${pg.sel===OTHER?"":"hidden"} style="margin-top:6px">
     <div class="row" style="margin-top:20px"><button class="btn ghost" id="ec">ยกเลิก</button><button class="btn" id="es">บันทึก</button></div></div></div>`;
   const close = () => { m.hidden = true; m.innerHTML = ""; document.removeEventListener("keydown", esc2); };
   const esc2 = e => e.key === "Escape" && close();
@@ -272,9 +314,13 @@ function openEdit(id){
   $("#mx").onclick = $("#ec").onclick = close;
   $("#es").onclick = async () => {
     const o = {}; F.forEach(([k]) => o[k] = $("#e_"+k).value.trim());
+    const gsel = $("#e_gsel").value, gother = $("#e_gother").value.trim();
+    if (gsel !== "" && +gsel === OTHER && !gother) return toast("กรุณาระบุกลุ่มธุรกิจ (อื่น ๆ)");
+    o.group = pg.legacy && +gsel === OTHER && gother === pg.other ? g.group : groupValue(gsel, gother);
     if (!o.name && !o.company) return toast("กรุณากรอกชื่อ-นามสกุลหรือชื่อบริษัท");
     try { await DB.update(id, o); toast("บันทึกการแก้ไขแล้ว"); close(); } catch(e){ console.error(e); toast("บันทึกไม่สำเร็จ"); }
   };
+  $("#e_gsel").onchange = () => { const o = $("#e_gother"); o.hidden = $("#e_gsel").value === "" || +$("#e_gsel").value !== OTHER; if (!o.hidden) o.focus(); };
   $("#e_name").focus();
 }
 function openReset(){
@@ -372,7 +418,9 @@ function openAdd(){
 }
 
 
-DB.sub(list => { guests = list; dash(); });
+/* ไม่มีระบบล็อกอิน: เปิดหน้าได้ทันที */
+function requireStaff(start){ return start(); }
+requireStaff(() => DB.sub(list => { guests = list; dash(); }));
 </script>
 </body>
 </html>

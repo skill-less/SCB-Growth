@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ลงทะเบียน GROWTH IN LOGISTICS2027</title>
+<title>ลงทะเบียน LOGISTICS GROWTH 2027</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 @media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
-body{font-family:'IBM Plex Sans Thai',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 .wrap{max-width:560px;margin:0 auto;padding:20px 18px 40px}
 .wrap.wide{max-width:1100px}
 h1{font-size:30px;line-height:1.25;margin:0 0 8px;font-weight:700}
@@ -111,9 +111,22 @@ dt{color:rgba(255,255,255,.8)}dd{color:#fff}
 .welcome h1,.welcome p{color:#fff}
 
 /* =====================================================================
+   ฟอนต์ DB HelvethaicaX
+   - ถ้าเครื่องติดตั้งฟอนต์นี้ไว้แล้ว จะใช้ได้ทันที (local)
+   - ถ้าไม่ได้ติดตั้ง ให้วางไฟล์ฟอนต์ไว้ที่โฟลเดอร์ fonts/ ข้างไฟล์ HTML ตามชื่อด้านล่าง
+     (ชื่อไฟล์แก้ได้ที่ url(...) ด้านล่าง)
+   ===================================================================== */
+@font-face{font-family:"DB HelvethaicaX";font-weight:400 500;font-style:normal;font-display:swap;
+  src:local("DB HelvethaicaX"),local("DBHelvethaicaX"),local("DB Helvethaica X"),
+      url("fonts/DBHelvethaicaX-Regular.woff2") format("woff2"),url("fonts/DBHelvethaicaX-Regular.ttf") format("truetype")}
+@font-face{font-family:"DB HelvethaicaX";font-weight:600 700;font-style:normal;font-display:swap;
+  src:local("DB HelvethaicaX Bold"),local("DBHelvethaicaX-Bold"),local("DB Helvethaica X Bold"),
+      url("fonts/DBHelvethaicaX-Bold.woff2") format("woff2"),url("fonts/DBHelvethaicaX-Bold.ttf") format("truetype")}
+/* =====================================================================
    ปรับขนาดที่นี่ — แก้ตัวเลขใน :root ด้านล่างได้เลย (หน่วย px / rem)
    ===================================================================== */
 :root{
+  --font:"DB HelvethaicaX","DB Helvethaica X","DB Helvethaica","IBM Plex Sans Thai",system-ui,sans-serif; /* ฟอนต์หลักของทั้งหน้า */
   --banner-w:536px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
   --banner-top:12px;         /* ระยะห่างเหนือแบนเนอร์ */
   --content-w:560px;        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
@@ -145,6 +158,7 @@ table{font-size:var(--table-fs)}
 </style>
 </head>
 <body>
+<div id="demo" class="demo" hidden>ยังไม่ได้เชื่อมต่อฐานข้อมูล</div>
 <header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
 <div id="toast" class="toast" hidden></div>
@@ -160,7 +174,7 @@ const firebaseConfig = {
   messagingSenderId: "148350658850",
   appId: "1:148350658850:web:f9c9d459ea037c7fec9d7b"
 };
-const EVENT_NAME = "GROWTH IN LOGISTICS 2027";
+const EVENT_NAME = "LOGISTICS GROWTH 2027";
 const VENUE = "หอประชุมมหิศร ธนาคารไทยพาณิชย์ สำนักงานใหญ่";
 /* โครงสร้าง: /guests/{id} = {seq,name,phone,email,company,group,checkedIn,checkedInAt,walkIn} */
 
@@ -173,9 +187,8 @@ if (useFB) {
   const ref = firebase.database().ref("guests");
   DB = {
     sub(cb){ ref.on("value", s => { const v = s.val() || {}; cb(Object.entries(v).map(([id,g]) => ({...g,id}))); }, e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); }); },
-    update(id, o){ return ref.child(id).update(o); },
-    add(o){ const k = ref.push().key; return ref.child(k).set(o).then(()=>k); },
-    bulk(list){ const m = {}; list.forEach(g => m[ref.push().key] = g); return ref.update(m); }
+    /* หน้าแขกเขียนได้เฉพาะ checkedIn / checkedInAt ของรายชื่อที่มีอยู่ (ตาม rules) */
+    update(id, o){ return ref.child(id).update({checkedIn:o.checkedIn, checkedInAt:o.checkedInAt}); }
   };
 } else {
   document.getElementById("demo").hidden = false;
@@ -223,8 +236,8 @@ function search(){
   const q = view.q || "", sq = view.sq || "";
   A(`<div class="wrap">
     <div class="top"><button class="link" id="back">← กลับ</button><span></span></div>
-    <h2>ค้นหารายชื่อ</h2>
-    <div class="row" style="flex-wrap:nowrap"><input id="q" type="text" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์ชื่อของคุณ" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
+    <h2>ค้นหาชื่อ</h2>
+    <div class="row" style="flex-wrap:nowrap"><input id="q" type="text" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์ชื่อ" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
     <div id="res"></div>
   </div>`);
   const inp = $("#q"); inp.focus(); inp.setSelectionRange(q.length,q.length);
@@ -245,7 +258,7 @@ function search(){
 /* ---- Confirm ---- */
 function confirmV(){
   const g = guests.find(x => x.id === view.id); if (!g) return go("search",{q:""});
-  A(`<div class="wrap"><h2>ยืนยันข้อมูลของคุณ</h2><div class="card">
+  A(`<div class="wrap"><h2>ยืนยันข้อมูล</h2><div class="card">
     ${g.checkedIn ? `<div class="warn">คุณเช็คอินไปแล้วเมื่อ ${esc(fmt(g.checkedInAt))}</div>` : ""}
     <dl><dt>ชื่อ-นามสกุล</dt><dd>${esc(g.name)}</dd><dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd></dl>
     <button class="btn block" id="ci">Check in</button>
@@ -254,11 +267,12 @@ function confirmV(){
   $("#ci").onclick = () => checkIn(g.id, {});
   $("#cn").onclick = () => go("search",{q:""});
 }
-async function checkIn(id, patch){
-  const g = guests.find(x => x.id === id);
-  const upd = {...patch, checkedIn:true, checkedInAt: g && g.checkedIn && !Object.keys(patch).length ? g.checkedInAt : Date.now()};
+async function checkIn(id){
+  const g = guests.find(x => x.id === id); if (!g) return go("search",{q:""});
+  if (g.checkedIn) return go("welcome",{g});   /* เช็คอินแล้ว ไม่เขียนซ้ำ */
+  const upd = {checkedIn:true, checkedInAt:Date.now()};
   try { await DB.update(id, upd); go("welcome",{g:{...g,...upd}}); }
-  catch(e){ toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
+  catch(e){ console.error(e); toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง หรือติดต่อเจ้าหน้าที่"); }
 }
 
 /* ---- Welcome ---- */

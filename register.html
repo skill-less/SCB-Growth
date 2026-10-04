@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ลงทะเบียน GROWTH IN LOGISTICS 2027</title>
+<title>ลงทะเบียนแขกหน้างาน</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 @media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
-body{font-family:'IBM Plex Sans Thai',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 .wrap{max-width:560px;margin:0 auto;padding:20px 18px 40px}
 .wrap.wide{max-width:1100px}
 h1{font-size:30px;line-height:1.25;margin:0 0 8px;font-weight:700}
@@ -82,9 +82,22 @@ input[aria-invalid=true]{border-color:var(--red)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* =====================================================================
+   ฟอนต์ DB HelvethaicaX
+   - ถ้าเครื่องติดตั้งฟอนต์นี้ไว้แล้ว จะใช้ได้ทันที (local)
+   - ถ้าไม่ได้ติดตั้ง ให้วางไฟล์ฟอนต์ไว้ที่โฟลเดอร์ fonts/ ข้างไฟล์ HTML ตามชื่อด้านล่าง
+     (ชื่อไฟล์แก้ได้ที่ url(...) ด้านล่าง)
+   ===================================================================== */
+@font-face{font-family:"DB HelvethaicaX";font-weight:400 500;font-style:normal;font-display:swap;
+  src:local("DB HelvethaicaX"),local("DBHelvethaicaX"),local("DB Helvethaica X"),
+      url("fonts/DBHelvethaicaX-Regular.woff2") format("woff2"),url("fonts/DBHelvethaicaX-Regular.ttf") format("truetype")}
+@font-face{font-family:"DB HelvethaicaX";font-weight:600 700;font-style:normal;font-display:swap;
+  src:local("DB HelvethaicaX Bold"),local("DBHelvethaicaX-Bold"),local("DB Helvethaica X Bold"),
+      url("fonts/DBHelvethaicaX-Bold.woff2") format("woff2"),url("fonts/DBHelvethaicaX-Bold.ttf") format("truetype")}
+/* =====================================================================
    ปรับขนาดที่นี่ — แก้ตัวเลขใน :root ด้านล่างได้เลย (หน่วย px / rem)
    ===================================================================== */
 :root{
+  --font:"DB HelvethaicaX","DB Helvethaica X","DB Helvethaica","IBM Plex Sans Thai",system-ui,sans-serif; /* ฟอนต์หลักของทั้งหน้า */
   --banner-w:536px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
   --banner-top:12px;         /* ระยะห่างเหนือแบนเนอร์ */
   --content-w:560px;        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
@@ -111,10 +124,14 @@ h1{font-size:var(--h1-fs)}h2{font-size:var(--h2-fs)}
 table{font-size:var(--table-fs)}
 .welcome h1{font-size:var(--welcome-name-fs)}.welcome p{font-size:var(--welcome-co-fs)}
 @media(max-width:600px){:root{--welcome-name-fs:34px;--stat-fs:30px}}
+.opt{display:flex;align-items:center;gap:12px;margin:6px 0;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;font-size:17px;color:var(--ink)}
+.opt input{width:20px;height:20px;flex:none;padding:0;margin:0;accent-color:var(--brand)}
+.opt:hover{background:color-mix(in srgb,var(--brand) 6%,transparent)}
+.opt:has(input:checked){border-color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,transparent)}
 </style>
 </head>
 <body>
-<div id="demo" class="demo" hidden>โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น</div>
+<div id="demo" class="demo" hidden>ยังไม่ได้เชื่อมต่อฐานข้อมูล</div>
 <header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
 <div id="toast" class="toast" hidden></div>
@@ -135,14 +152,19 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2500); }
 
 /* ===== Data: บันทึกแขกใหม่ (เช็คอินทันที) ===== */
+/* ข้อมูลแยก 2 ส่วน: /guests = สาธารณะ (ชื่อ บริษัท สถานะเช็คอิน) | /private = เฉพาะเจ้าหน้าที่ (เบอร์โทร อีเมล กลุ่มธุรกิจ) */
+const PRIVK = ["phone","email","group"];
+const splitPaths = (id, o, m) => { for (const k in o) m[(PRIVK.includes(k) ? "private/" : "guests/") + id + "/" + k] = o[k] === undefined ? null : o[k]; return m; };
 let DB;
-if (firebaseConfig.apiKey && firebaseConfig.databaseURL) {
+const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
+if (useFB) {
   firebase.initializeApp(firebaseConfig);
-  const ref = firebase.database().ref("guests");
+  const db = firebase.database();
   DB = { async add(o){
-    const snap = await ref.once("value"); const v = snap.val() || {};
+    const snap = await db.ref("guests").once("value"); const v = snap.val() || {};
     o.seq = String(Math.max(0, ...Object.values(v).map(g => parseInt(g.seq)||0)) + 1);
-    await ref.push(o); return o; } };
+    const k = db.ref("guests").push().key;
+    await db.ref().update(splitPaths(k, o, {})); return o; } };
 } else {
   $("#demo").hidden = false;
   const KEY = "checkin_guests_demo";
@@ -155,6 +177,17 @@ if (firebaseConfig.apiKey && firebaseConfig.databaseURL) {
 /* ===== Views ===== */
 let wTimer, draft = {}, errs = {};
 const REQ = ["name","phone","email","company","group"];
+const GROUPS = ["ขนส่งภายในประเทศ","ผู้จัดการขนส่งสินค้า","ตัวแทนออกของ","สายเรือ / สายการบิน","คลังสินค้า","อื่น ๆ"];
+const OTHER = GROUPS.length - 1;
+/* ค่าที่เก็บในฐานข้อมูล: ข้อ 1-5 เก็บชื่อกลุ่ม, ข้อ 6 เก็บเป็น "อื่น ๆ: ข้อความที่กรอก" */
+const groupValue = (sel, other) => sel === "" || sel == null ? "" : +sel === OTHER ? (other ? "อื่น ๆ: " + other : "") : GROUPS[+sel];
+function parseGroup(v){
+  v = (v || "").trim(); if (!v) return {sel:"", other:"", legacy:false};
+  const i = GROUPS.indexOf(v); if (i >= 0 && i !== OTHER) return {sel:i, other:"", legacy:false};
+  const m = v.match(/^อื่น ๆ\s*:?\s*(.*)$/); if (m) return {sel:OTHER, other:m[1].trim(), legacy:false};
+  return {sel:OTHER, other:v, legacy:true};   /* ข้อความเดิมที่นำเข้าจาก Excel */
+}
+
 const co = c => c ? (/^(บริษัท|บจก|บมจ|หจก|ห้างหุ้นส่วน|ธนาคาร)/.test(c) ? "" : "บริษัท ") + c : "";
 function normPhone(v){ let d = v.replace(/[\s\-().]/g,""); if (/^\+?66\d{8,9}$/.test(d)) d = "0"+d.replace(/^\+?66/,""); return d; }
 function validate(o){
@@ -163,19 +196,26 @@ function validate(o){
   if (!o.phone) e.phone = "กรุณากรอกเบอร์โทรศัพท์"; else if (!/^0\d{8,9}$/.test(normPhone(o.phone))) e.phone = "รูปแบบเบอร์โทรไม่ถูกต้อง เช่น 0812345678";
   if (!o.email) e.email = "กรุณากรอก E-mail"; else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(o.email)) e.email = "รูปแบบ E-mail ไม่ถูกต้อง เช่น name@company.com";
   if (!o.company) e.company = "กรุณากรอกชื่อบริษัท";
-  if (!o.group) e.group = "กรุณากรอกกลุ่มธุรกิจ";
+  if (o.gsel === "" || o.gsel == null) e.group = "กรุณาเลือกกลุ่มธุรกิจ"; else if (+o.gsel === OTHER && !o.gother) e.group = "กรุณาระบุกลุ่มธุรกิจ (อื่น ๆ)";
   return e;
 }
 function form(){
   clearTimeout(wTimer);
   const attr = k => k==="phone" ? 'type="tel" inputmode="tel"' : k==="email" ? 'type="email" inputmode="email"' : 'type="text"';
-  // $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียน</h1><p class="sub">${esc(EVENT_NAME)} — กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
-      $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียน</h1><p class="sub">กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
-    ${FIELDS.map(([k,l]) => `<label for="n_${k}">${l} <span style="color:var(--red)">*</span></label><input id="n_${k}" ${attr(k)} autocomplete="off" value="${esc(draft[k]||"")}" ${errs[k]?'aria-invalid="true"':""}>${errs[k]?`<p class="err" role="alert">${errs[k]}</p>`:""}`).join("")}
+  $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียนแขกหน้างาน</h1><p class="sub">${esc(EVENT_NAME)} — กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
+    ${FIELDS.map(([k,l]) => k==="group" ? `<label id="gl">${l} <span style="color:var(--red)">*</span></label>
+      <div role="radiogroup" aria-labelledby="gl">${GROUPS.map((x,i) => `<label class="opt"><input type="radio" name="grp" value="${i}" ${String(draft.gsel)===String(i)?"checked":""}><span>${i+1}. ${x}</span></label>`).join("")}</div>
+      <input id="n_gother" type="text" autocomplete="off" placeholder="โปรดระบุกลุ่มธุรกิจ" value="${esc(draft.gother||"")}" ${String(draft.gsel)===String(OTHER)?"":"hidden"} ${errs.group?'aria-invalid="true"':""} style="margin-top:6px">${errs.group?`<p class="err" role="alert">${errs.group}</p>`:""}`
+      : `<label for="n_${k}">${l} <span style="color:var(--red)">*</span></label><input id="n_${k}" ${attr(k)} autocomplete="off" value="${esc(draft[k]||"")}" ${errs[k]?'aria-invalid="true"':""}>${errs[k]?`<p class="err" role="alert">${errs[k]}</p>`:""}`).join("")}
     <button class="btn block" id="nx" style="margin-top:22px">ตรวจสอบข้อมูล</button></div></div>`;
-  const first = REQ.find(k => errs[k]); $("#n_"+(first||"name")).focus();
+  document.querySelectorAll("input[name=grp]").forEach(r => r.onchange = () => { const o = $("#n_gother"); o.hidden = +r.value !== OTHER; if (!o.hidden) o.focus(); });
+  const first = REQ.find(k => errs[k]);
+  if (first === "group") ($("#n_gother").hidden ? document.querySelector("input[name=grp]") : $("#n_gother")).focus(); else $("#n_"+(first||"name")).focus();
   $("#nx").onclick = () => {
-    FIELDS.forEach(([k]) => draft[k] = $("#n_"+k).value.trim());
+    FIELDS.filter(f => f[0] !== "group").forEach(([k]) => draft[k] = $("#n_"+k).value.trim());
+    const gs = document.querySelector("input[name=grp]:checked");
+    draft.gsel = gs ? gs.value : ""; draft.gother = $("#n_gother").value.trim();
+    draft.group = groupValue(draft.gsel, draft.gother);
     errs = validate(draft);
     if (Object.keys(errs).length) return form();
     draft.phone = normPhone(draft.phone); summary();
@@ -188,7 +228,7 @@ function summary(){
   $("#bk").onclick = () => { errs = {}; form(); };
   $("#ci").onclick = async () => {
     $("#ci").disabled = true; $("#bk").disabled = true;
-    const o = {...draft, walkIn:true, checkedIn:true, checkedInAt:Date.now()};
+    const {gsel, gother, ...rest} = draft; const now = Date.now(); const o = {...rest, walkIn:true, checkedIn:true, checkedInAt:now, registeredAt:now};
     try { const g = await DB.add(o); welcome(g); }
     catch(e){ console.error(e); $("#ci").disabled = false; $("#bk").disabled = false; toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง"); }
   };
@@ -197,7 +237,9 @@ function welcome(g){
   $("#app").innerHTML = `<div class="welcome"><div class="tick" aria-hidden="true">✓</div>
     <h1>ยินดีต้อนรับ คุณ${esc(g.name)}</h1><p>${esc(co(g.company))}</p></div>`;
 }
-form();
+/* ไม่มีระบบล็อกอิน: เปิดหน้าได้ทันที */
+function requireStaff(start){ return start(); }
+requireStaff(form);
 </script>
 </body>
 </html>

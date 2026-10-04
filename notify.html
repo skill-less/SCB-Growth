@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>การแจ้งเตือน</title>
+<title>แจ้งเตือนการลงทะเบียน</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 :root{--bg:#f4f5f1;--card:#fff;--ink:#17231f;--mute:#66736d;--line:#dde2dc;--brand:#6b2fa0;--brand2:#54247f;--gold:#e8a317;--red:#b3392f;--ok:#1f7a4d}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
@@ -54,21 +53,25 @@ dt{color:var(--mute)}dd{margin:0;font-weight:600;word-break:break-word}
 .welcome{background:#6b2fa0}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
 .link{background:none;border:0;color:var(--brand);font:inherit;cursor:pointer;padding:4px 0;text-decoration:underline}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 20px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0 20px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
 .stat span{color:var(--mute);font-size:15px}.stat b{display:block;font-size:38px;line-height:1.1}
 .bar{height:10px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:18px}.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
 .tabs{display:flex;gap:6px;margin-bottom:12px}
 .tab{font:inherit;border:1.5px solid var(--line);background:transparent;color:var(--ink);padding:9px 18px;border-radius:99px;cursor:pointer}
-.tab[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab[aria-selected=true],.tab[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}
 table{border-collapse:collapse;width:100%;font-size:15px}
 th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
 th{cursor:pointer;user-select:none;color:var(--mute);font-weight:500;position:sticky;top:0;background:var(--card)}
 th:hover{color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:12px;z-index:9}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px;z-index:8;overflow:auto}
+.dlg{background:var(--card);border-radius:16px;padding:22px;width:100%;max-width:720px;max-height:92vh;overflow:auto}
+textarea{font:inherit;width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:16px;resize:vertical}
+.hint{color:var(--mute);font-size:14px;margin:8px 0}
 body{background-image:url(bg.png);background-size:cover;background-position:center;background-attachment:fixed;background-repeat:no-repeat}
-.banner{max-width:560px;margin:0 auto;padding:12px 12px 0}
+.banner{max-width:1100px;margin:0 auto;padding:12px 12px 0}
 .banner img{display:block;width:100%;height:auto;border-radius:16px}
 .wrap{background:color-mix(in srgb,var(--bg) 92%,transparent);border-radius:20px;margin:12px auto;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .hero{min-height:70vh}
@@ -79,6 +82,7 @@ body{background-image:url(bg.png);background-size:cover;background-position:cent
 .err{color:var(--red);font-size:14px;margin:4px 0 0}
 input[aria-invalid=true]{border-color:var(--red)}
 .demo{background:var(--gold);color:#241a00;font-size:14px;text-align:center;padding:5px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.stats{gap:8px}.stat b{font-size:30px}.hero h1{font-size:34px}.welcome h1{font-size:34px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
@@ -99,9 +103,9 @@ input[aria-invalid=true]{border-color:var(--red)}
    ===================================================================== */
 :root{
   --font:"DB HelvethaicaX","DB Helvethaica X","DB Helvethaica","IBM Plex Sans Thai",system-ui,sans-serif; /* ฟอนต์หลักของทั้งหน้า */
-  --banner-w:536px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
+  --banner-w:440px;        /* ความกว้างรูป banner.png (ย่อ/ขยายที่นี่) */
   --banner-top:12px;         /* ระยะห่างเหนือแบนเนอร์ */
-  --content-w:560px;        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
+  --content-w:min(1800px,98vw);        /* ความกว้างกรอบเนื้อหา/ฟอร์ม/ตาราง */
   --btn-h:52px;              /* ความสูงปุ่มปกติ */
   --btn-fs:18px;             /* ขนาดตัวอักษรปุ่มปกติ */
   --btn-sm-h:38px;           /* ความสูงปุ่มเล็ก (ในตาราง/แถบบน) */
@@ -125,37 +129,39 @@ h1{font-size:var(--h1-fs)}h2{font-size:var(--h2-fs)}
 table{font-size:var(--table-fs)}
 .welcome h1{font-size:var(--welcome-name-fs)}.welcome p{font-size:var(--welcome-co-fs)}
 @media(max-width:600px){:root{--welcome-name-fs:34px;--stat-fs:30px}}
-.opt{display:flex;align-items:center;gap:12px;margin:6px 0;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;font-size:17px;color:var(--ink)}
-.opt input{width:20px;height:20px;flex:none;padding:0;margin:0;accent-color:var(--brand)}
-.opt:hover{background:color-mix(in srgb,var(--brand) 6%,transparent)}
-.opt:has(input:checked){border-color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,transparent)}
+/* ตาราง admin: ให้เห็นทุกคอลัมน์บนจอ PC (ข้อความยาวตัดขึ้นบรรทัดใหม่แทนการเลื่อนข้าง) */
+.tw{overflow-x:auto}
+table{table-layout:auto}
+th,td{padding:10px 10px;white-space:normal;overflow-wrap:break-word;vertical-align:middle}
+th{white-space:nowrap}
+td .btn{white-space:nowrap}
+.wrap.wide{padding-left:14px;padding-right:14px}
 
 /* ===== หน้าแจ้งเตือน ===== */
-:root{--content-w:860px}
-.fhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.fhead h1{margin:0}
-.tabs{flex-wrap:wrap}
-.tab{font-size:17px;display:inline-flex;align-items:center}
-.badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:var(--red);color:#fff;font-size:13px;margin-left:8px}
-.feed{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.fi{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-.fi .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
-.fi.reg .ic{background:color-mix(in srgb,var(--brand) 16%,transparent);color:var(--brand)}
-.fi .meta{color:var(--mute);font-size:15px;margin-top:2px;overflow-wrap:anywhere}
-.fi .tm{text-align:right;font-size:15px;white-space:nowrap}.fi .tm small{display:block;color:var(--mute)}
-.fi.new{border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 38%,transparent);animation:pop .45s ease}
-@keyframes pop{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}
-.empty{text-align:center;color:var(--mute);padding:40px 10px;background:var(--card);border:1px dashed var(--line);border-radius:14px}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-@media(prefers-reduced-motion:reduce){.fi.new{animation:none}}
-@media(max-width:600px){.fi{grid-template-columns:36px 1fr}.fi .ic{width:36px;height:36px;font-size:18px}.fi .tm{grid-column:2;text-align:left}}
+:root{--content-w:min(900px,96vw)}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.live{display:inline-flex;align-items:center;gap:8px;font-size:15px;color:var(--mute)}
+.live i{width:10px;height:10px;border-radius:50%;background:var(--mute);display:inline-block}
+.live.on i{background:var(--ok);box-shadow:0 0 0 0 var(--ok);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}100%{box-shadow:0 0 0 10px transparent}}
+.bdg{display:inline-block;min-width:22px;padding:0 6px;margin-left:8px;border-radius:99px;background:var(--red);color:#fff;font-size:13px;line-height:22px;text-align:center}
+.msg{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--brand);border-radius:12px;padding:14px 18px;margin-bottom:10px}
+.msg.reg{border-left-color:var(--gold)}
+.msg.fresh{animation:pop .5s ease,glow 8s ease-out}
+@keyframes pop{from{transform:translateY(-12px);opacity:0}to{transform:none;opacity:1}}
+@keyframes glow{0%,70%{box-shadow:0 0 0 3px var(--gold)}100%{box-shadow:0 0 0 0 transparent}}
+.mh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:18px}
+.mh time{color:var(--mute);font-size:14px;white-space:nowrap}
+.md{display:grid;grid-template-columns:max-content 1fr;gap:2px 16px;margin:8px 0 0;font-size:15px}
+.md dt{color:var(--mute)}.md dd{margin:0;word-break:break-word;font-weight:500}
+#snd{white-space:nowrap}
+.empty{padding:34px 10px;text-align:center;color:var(--mute)}
 </style>
 </head>
 <body>
 <div id="demo" class="demo" hidden>ยังไม่ได้เชื่อมต่อฐานข้อมูล</div>
 <header class="banner"><img src="banner.png" alt="" onerror="this.parentNode.style.display='none'"></header>
 <div id="app"></div>
-<div id="live" class="sr" aria-live="polite"></div>
 <div id="toast" class="toast" hidden></div>
 <script>
 const firebaseConfig = {
@@ -169,137 +175,99 @@ const firebaseConfig = {
 };
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
+function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3000); }
 
-/* ===== Data (อ่านอย่างเดียว): /guests สาธารณะ + /private เฉพาะเจ้าหน้าที่ ===== */
-let DB;
-if (useFB) {
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  let pubM = {}, prvM = {}, pubReady = false, cbk = () => {};
-  const emit = () => { if (pubReady) cbk(Object.keys(pubM).map(id => ({...pubM[id], ...(prvM[id]||{}), id}))); };
-  const errH = e => { console.error(e); const t = $("#toast"); t.textContent = "เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"; t.hidden = false; };
-  DB = { sub(cb){ cbk = cb;
-    db.ref("guests").on("value", s => { pubM = s.val() || {}; pubReady = true; emit(); }, errH);
-    db.ref("private").on("value", s => { prvM = s.val() || {}; emit(); }, errH); } };
-} else {
-  $("#demo").hidden = false;
-  const KEY = "checkin_guests_demo";
-  DB = { sub(cb){ const emit = () => cb(Object.entries(JSON.parse(localStorage.getItem(KEY) || "{}")).map(([id,g]) => ({...g,id})));
-    emit(); window.addEventListener("storage", e => { if (e.key === KEY) emit(); }); } };
+/* ===== Data: อ่านอย่างเดียว (real-time) ===== */
+const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
+let live = false, onStatus = () => {};
+function subscribe(cb){
+  if (useFB) {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let pub = {}, prv = {}, lp = false, lv = false;
+    const merge = () => { if (lp && lv) cb(Object.keys(pub).map(id => ({...pub[id], ...(prv[id]||{}), id}))); };
+    const err = e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); };
+    db.ref("guests").on("value", s => { pub = s.val() || {}; lp = true; merge(); }, err);
+    db.ref("private").on("value", s => { prv = s.val() || {}; lv = true; merge(); }, err);
+    db.ref(".info/connected").on("value", s => { live = !!s.val(); onStatus(); });
+  } else {
+    $("#demo").hidden = false;
+    const KEY = "checkin_guests_demo";
+    const emit = () => { const st = JSON.parse(localStorage.getItem(KEY) || "{}"); cb(Object.entries(st).map(([id,g]) => ({...g, id}))); };
+    window.addEventListener("storage", e => { if (e.key === KEY) emit(); });
+    live = true; emit();
+  }
 }
 
-/* ===== ตัวช่วยแสดงผล ===== */
-const dtf = t => new Date(t).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"medium"});
-const rel = t => { const s = Math.max(0, Math.round((Date.now()-t)/1000));
-  return s < 10 ? "เมื่อสักครู่" : s < 60 ? s+" วินาทีที่แล้ว" : s < 3600 ? Math.floor(s/60)+" นาทีที่แล้ว" : s < 86400 ? Math.floor(s/3600)+" ชั่วโมงที่แล้ว" : ""; };
-const co = c => !c ? "" : /^(บริษัท|บจก|บมจ|หจก|ห้างหุ้นส่วน|ธนาคาร)/.test(c) ? c : "บริษัท " + c;
+/* ===== State ===== */
+let guests = [], prev = new Map(), first = true, tab = "ci", unseen = {ci:0, reg:0}, fresh = new Map(), sound = false;
+const FRESH_MS = 8000;
+
+function onData(list){
+  guests = list;
+  if (!first) {
+    const t = Date.now(); let nCI = 0, nReg = 0;
+    list.forEach(g => { const p = prev.get(g.id);
+      if (g.checkedIn && !(p && p.checkedIn)) { fresh.set("ci:"+g.id, t); nCI++; }
+      if (g.walkIn && !p) { fresh.set("reg:"+g.id, t); nReg++; } });
+    if (nCI && tab !== "ci") unseen.ci += nCI;
+    if (nReg && tab !== "reg") unseen.reg += nReg;
+    if (nCI || nReg) beep();
+  }
+  first = false; prev = new Map(list.map(g => [g.id, g]));
+  render();
+}
+
+/* ===== เสียงแจ้งเตือน ===== */
+function beep(){
+  if (!sound) return;
+  try {
+    const c = beep.c || (beep.c = new (window.AudioContext || window.webkitAudioContext)()); if (c.state === "suspended") c.resume();
+    const o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.type = "sine"; o.frequency.value = 880;
+    g.gain.setValueAtTime(.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(.25, c.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001, c.currentTime+.45);
+    o.start(); o.stop(c.currentTime+.5);
+  } catch(e){}
+}
+
+/* ===== View ===== */
+const ago = t => { const s = Math.max(0, (Date.now()-t)/1000|0); return s < 10 ? "เมื่อสักครู่" : s < 60 ? s+" วินาทีที่แล้ว" : s < 3600 ? (s/60|0)+" นาทีที่แล้ว" : (s/3600|0)+" ชม. ที่แล้ว"; };
+const clock = t => new Date(t).toLocaleTimeString("th-TH", {hour:"2-digit", minute:"2-digit", second:"2-digit"}) + " น.";
+const when = g => (tab === "ci" ? g.checkedInAt : (g.registeredAt || g.checkedInAt)) || 0;
 const nm = g => (g.name || "").trim() || "(ไม่ระบุชื่อ)";
 
-/* ===== สถานะ ===== */
-const KINDS = {in:"เช็คอิน", reg:"ลงทะเบียนใหม่"};
-let guests = [], tab = "in", ready = false, sound = true;
-let seen = {in:new Set(), reg:new Set()}, unread = {in:0, reg:0}, flash = {};
-const lists = () => ({
-  in:  guests.filter(g => g.checkedIn && g.checkedInAt).sort((a,b) => b.checkedInAt - a.checkedInAt),
-  reg: guests.filter(g => g.walkIn).sort((a,b) => (b.checkedInAt||0) - (a.checkedInAt||0))
-});
-
-/* ===== เสียง / การแจ้งเตือนเบราว์เซอร์ ===== */
-let ac;
-const tone = (f, t0, d) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = "sine"; o.frequency.value = f;
-  g.gain.setValueAtTime(.0001, ac.currentTime+t0); g.gain.exponentialRampToValueAtTime(.25, ac.currentTime+t0+.02); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime+t0+d);
-  o.connect(g); g.connect(ac.destination); o.start(ac.currentTime+t0); o.stop(ac.currentTime+t0+d+.05); };
-function beep(kind){ if (!sound) return; try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume();
-  if (kind === "reg") { tone(660,0,.25); tone(990,.2,.3); } else tone(880,0,.35); } catch(e){} }
-document.addEventListener("click", () => { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch(e){} });
-const title = () => { const n = unread.in + unread.reg; document.title = (n ? `(${n}) ` : "") + "การแจ้งเตือน"; };
-
-/* ===== รับข้อมูล: ครั้งแรกโหลดประวัติ หลังจากนั้นรายการที่เพิ่มเข้ามาคือ "ใหม่" ===== */
-function onData(list){
-  guests = list; const L = lists();
-  for (const k of ["in","reg"]) {
-    if (ready) {
-      const fresh = L[k].filter(g => !seen[k].has(g.id));
-      if (fresh.length) {
-        fresh.forEach(g => flash[k+g.id] = Date.now());
-        if (tab !== k || document.hidden) unread[k] += fresh.length;
-        beep(k);
-        const msg = fresh.map(g => k === "in" ? `คุณ${nm(g)} เช็คอินแล้ว` : `ลงทะเบียนใหม่: คุณ${nm(g)}`).join(", ");
-        $("#live").textContent = msg;
-        if (document.hidden && window.Notification && Notification.permission === "granted") try { new Notification(KINDS[k], {body: msg}); } catch(e){}
-        setTimeout(render, 8200);
-      }
-    }
-    seen[k] = new Set(L[k].map(g => g.id));
-  }
-  ready = true; title(); render();
+function msg(g, kind){
+  const t = kind === "ci" ? g.checkedInAt : (g.registeredAt || g.checkedInAt);
+  const isFresh = (fresh.get(kind+":"+g.id) || 0) > Date.now() - FRESH_MS;
+  const rows = [["ลำดับ", g.seq], ["ชื่อบริษัท", g.company], ["เบอร์โทรศัพท์", g.phone], ["E-mail", g.email], ["กลุ่มธุรกิจ", g.group]].filter(r => r[1]);
+  const head = kind === "ci"
+    ? `<span>✓ <b>คุณ${esc(nm(g))}</b> เช็คอินแล้ว${g.walkIn ? ' <span class="tag no">Walk-in</span>' : ""}</span>`
+    : `<span>＋ <b>คุณ${esc(nm(g))}</b> ลงทะเบียนหน้างานเพิ่ม</span>`;
+  return `<article class="msg ${kind==="reg"?"reg":""} ${isFresh?"fresh":""}"><div class="mh">${head}<time>${t ? clock(t)+" · "+ago(t) : ""}</time></div>
+    <dl class="md">${rows.map(([k,v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl></article>`;
 }
 
-/* ===== แสดงผล ===== */
-function item(k, g){
-  const isNew = Date.now() - (flash[k+g.id] || 0) < 8000, t = g.checkedInAt;
-  const bits = k === "in"
-    ? [co(g.company), g.seq ? "ลำดับ "+g.seq : "", g.group ? "กลุ่ม: "+g.group : ""]
-    : [co(g.company), g.group ? "กลุ่ม: "+g.group : "", g.phone ? "โทร "+g.phone : "", g.email];
-  return `<li class="fi ${k} ${isNew?"new":""}"><div class="ic" aria-hidden="true">${k==="in"?"✓":"＋"}</div>
-    <div><b>${k==="in" ? "คุณ"+esc(nm(g))+" เช็คอินแล้ว" : "ลงทะเบียนใหม่: คุณ"+esc(nm(g))}</b>${k==="in"&&g.walkIn?' <span class="tag no">Walk-in</span>':""}${isNew?' <span class="tag ok">ใหม่</span>':""}
-    <div class="meta">${bits.filter(Boolean).map(esc).join(" · ")}</div></div>
-    <div class="tm">${t ? esc(dtf(t)) : ""}<small>${t ? esc(rel(t)) : ""}</small></div></li>`;
-}
 function render(){
-  const L = lists(), shown = L[tab].slice(0,300);
-  const perm = window.Notification ? Notification.permission : "denied";
-  $("#app").innerHTML = `<div class="wrap"><div class="fhead"><h1>การแจ้งเตือน</h1><div class="row" style="flex:none;gap:8px">
-      <button class="btn ghost sm" id="snd" aria-pressed="${sound}">เสียง: ${sound?"เปิด":"ปิด"}</button>
-      ${perm==="default"?'<button class="btn ghost sm" id="ntf">เปิดแจ้งเตือนบนเบราว์เซอร์</button>':""}
-      ${useFB?'<button class="btn ghost sm" id="lo">ออกจากระบบ</button>':""}</div></div>
-    <div class="tabs" role="tablist">${["in","reg"].map(k => `<button class="tab" role="tab" data-k="${k}" aria-selected="${tab===k}">${KINDS[k]} (${L[k].length})${unread[k]?`<span class="badge" aria-label="ใหม่ ${unread[k]} รายการ">${unread[k]}</span>`:""}</button>`).join("")}</div>
-    ${shown.length ? `<ul class="feed">${shown.map(g => item(tab,g)).join("")}</ul>` : `<div class="empty">ยังไม่มีรายการ — รายการใหม่จะขึ้นที่นี่ทันที</div>`}
-    ${L[tab].length > 300 ? `<p class="hint" style="text-align:center;color:var(--mute)">แสดง 300 รายการล่าสุดจากทั้งหมด ${L[tab].length}</p>` : ""}</div>`;
-  document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.k; unread[tab] = 0; title(); render(); });
-  $("#snd").onclick = () => { sound = !sound; if (sound) beep("in"); render(); };
-  const n = $("#ntf"); if (n) n.onclick = () => Notification.requestPermission().then(render);
-  const lo = $("#lo"); if (lo) lo.onclick = signOutStaff;
+  const ci = guests.filter(g => g.checkedIn).sort((a,b) => (b.checkedInAt||0)-(a.checkedInAt||0) || (parseInt(b.seq)||0)-(parseInt(a.seq)||0));
+  const reg = guests.filter(g => g.walkIn).sort((a,b) => (b.registeredAt||b.checkedInAt||0)-(a.registeredAt||a.checkedInAt||0) || (parseInt(b.seq)||0)-(parseInt(a.seq)||0));
+  const list = tab === "ci" ? ci : reg, kind = tab;
+  const tot = unseen.ci + unseen.reg;
+  document.title = (tot ? `(${tot}) ` : "") + "แจ้งเตือนการลงทะเบียน";
+  const bd = n => n ? `<span class="bdg">${n}</span>` : "";
+  $("#app").innerHTML = `<div class="wrap wide">
+    <div class="hd"><h1 style="margin:0;font-size:26px">แจ้งเตือนแบบ Live</h1>
+      <div class="row" style="flex:none;align-items:center"><span class="live ${live?"on":""}" id="st"><i></i>${live ? "เชื่อมต่อแล้ว" : "กำลังเชื่อมต่อ..."}</span>
+      <button class="btn ghost sm" id="snd">เสียงแจ้งเตือน: ${sound ? "เปิด" : "ปิด"}</button></div></div>
+    <p class="sub" style="margin:4px 0 14px">รายการใหม่จะขึ้นด้านบนสุดทันที ไม่ต้องรีเฟรชหน้า</p>
+    <div class="tabs" role="tablist"><button class="tab" role="tab" data-t="ci" aria-selected="${tab==="ci"}">Check-in (${ci.length})${bd(unseen.ci)}</button>
+      <button class="tab" role="tab" data-t="reg" aria-selected="${tab==="reg"}">ลงทะเบียนใหม่ (${reg.length})${bd(unseen.reg)}</button></div>
+    <div id="feed">${list.length ? list.slice(0,300).map(g => msg(g, kind)).join("") : `<div class="empty">${tab==="ci" ? "ยังไม่มีการเช็คอิน — จะแสดงที่นี่ทันทีเมื่อมีคนเช็คอิน" : "ยังไม่มีการลงทะเบียนหน้างาน — จะแสดงที่นี่ทันทีเมื่อมีแขกลงทะเบียนเพิ่ม"}</div>`}</div></div>`;
+  document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.t; unseen[tab] = 0; render(); });
+  $("#snd").onclick = () => { sound = !sound; if (sound) { const s = sound; beep(); } render(); };
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { unread[tab] = 0; title(); render(); } });
-
-/* ===== เข้าสู่ระบบเจ้าหน้าที่ (Firebase Auth + รายการ /admins/{uid}) ===== */
-function requireStaff(start){
-  if (!useFB) return start();
-  const show = h => { document.getElementById("app").innerHTML = h; };
-  let started = false;
-  const login = (msg, email = "") => {
-    show(`<div class="wrap" style="max-width:420px"><div class="card"><h2 style="margin-top:0">เข้าสู่ระบบเจ้าหน้าที่</h2>
-      <label for="em">E-mail</label><input id="em" type="email" autocomplete="username" value="${String(email).replace(/[&<>"']/g, "")}">
-      <label for="pw">รหัสผ่าน</label><input id="pw" type="password" autocomplete="current-password">
-      ${msg ? `<p role="alert" style="color:var(--red);margin:12px 0 0">${msg}</p>` : ""}
-      <button class="btn block" id="li" style="margin-top:18px">เข้าสู่ระบบ</button></div></div>`);
-    const go = () => { const b = document.getElementById("li"); b.disabled = true; const em = document.getElementById("em").value.trim();
-      firebase.auth().signInWithEmailAndPassword(em, document.getElementById("pw").value)
-        .catch(() => login("อีเมลหรือรหัสผ่านไม่ถูกต้อง", em)); };
-    document.getElementById("li").onclick = go;
-    document.getElementById("pw").onkeydown = e => { if (e.key === "Enter") go(); };
-    document.getElementById(email ? "pw" : "em").focus();
-  };
-  const noAccess = u => {
-    show(`<div class="wrap" style="max-width:520px"><div class="card"><h2 style="margin-top:0">บัญชีนี้ยังไม่มีสิทธิ์เจ้าหน้าที่</h2>
-      <p>ให้ผู้ดูแลระบบเพิ่มรหัส (UID) ด้านล่างนี้ที่ Realtime Database ไปที่ <b>admins</b> → ชื่อ = UID, ค่า = <b>true</b> แล้วโหลดหน้านี้ใหม่</p>
-      <p style="word-break:break-all;user-select:all;background:var(--bg);padding:10px;border-radius:10px;font-family:monospace">${u.uid}</p>
-      <button class="btn ghost block" id="lo2">ออกจากระบบ</button></div></div>`);
-    document.getElementById("lo2").onclick = () => firebase.auth().signOut();
-  };
-  firebase.auth().onAuthStateChanged(async u => {
-    if (!u) { started = false; return login(); }
-    try {
-      const ok = (await firebase.database().ref("admins/" + u.uid).once("value")).val() === true;
-      if (!ok) return noAccess(u);
-      if (!started) { started = true; start(); }
-    } catch (e) { console.error(e); noAccess(u); }
-  });
-}
-const signOutStaff = () => firebase.auth().signOut().then(() => location.reload());
-requireStaff(() => { DB.sub(onData); setInterval(() => { if (ready) render(); }, 20000); });
+onStatus = () => { const e = $("#st"); if (e) { e.className = "live " + (live ? "on" : ""); e.lastChild.textContent = live ? "เชื่อมต่อแล้ว" : "กำลังเชื่อมต่อ..."; } };
+setInterval(() => { if (!first) render(); }, 15000);
+render();
+subscribe(onData);
 </script>
 </body>
 </html>
