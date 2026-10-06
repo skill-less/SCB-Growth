@@ -176,17 +176,31 @@ const firebaseConfig = {
 };
 const EVENT_NAME = "LOGISTICS GROWTH 2027";
 const VENUE = "หอประชุมมหิศร ธนาคารไทยพาณิชย์ สำนักงานใหญ่";
-/* โครงสร้าง: /guests/{id} = {seq,name,phone,email,company,group,checkedIn,checkedInAt,walkIn} */
-
+/* โครงสร้าง: /guests/{id} = ชื่อ บริษัท สถานะเช็คอิน (หน้านี้อ่านเพื่อแนะนำชื่อ) | /private/{id} = เบอร์ อีเมล กลุ่ม (เฉพาะ admin) */
 /* ============ Data layer ============ */
 const FIELDS = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]];
 let guests = [], listeners = [], DB;
+/* ===== ค้นหาด้วยเบอร์โทรโดยไม่เปิดเผยรายชื่อ/เบอร์ในฐานข้อมูลสาธารณะ =====
+   /lookup/{SHA-256(เบอร์)}/{guestId} = true  — อ่านได้เฉพาะ "ราย key" (ต้องรู้เบอร์ตัวเองถึงจะเจอ) ลิสต์ทั้งหมดไม่ได้
+   LOOKUP_SALT ต้องเหมือนกันทุกไฟล์ (checkin / register / admin) */
+const LOOKUP_SALT = "lg2027-lookup";
+const normPhone = p => { let d = String(p || "").replace(/\D/g, ""); if (/^66\d{9}$/.test(d)) d = "0" + d.slice(2); else if (/^[1-9]\d{8}$/.test(d)) d = "0" + d; return d; };
+async function phoneKey(p){
+  if (!(window.crypto && crypto.subtle)) throw new Error("ต้องเปิดผ่าน https");
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(LOOKUP_SALT + "|" + normPhone(p)));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
 const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
 if (useFB) {
   firebase.initializeApp(firebaseConfig);
-  const ref = firebase.database().ref("guests");
+  const db = firebase.database(), ref = db.ref("guests");
   DB = {
-    sub(cb){ ref.on("value", s => { const v = s.val() || {}; cb(Object.entries(v).map(([id,g]) => ({...g,id}))); }, e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); }); },
+    /* ค้นหาจากเบอร์โทร: อ่าน /lookup/{hash} ได้ id แล้วอ่าน /guests/{id} ทีละราย (ไม่มีการโหลดรายชื่อทั้งหมด) */
+    async lookup(phone){
+      const k = await phoneKey(phone), ids = Object.keys((await db.ref("lookup/" + k).once("value")).val() || {}), out = [];
+      for (const id of ids.slice(0, 10)) { const g = (await db.ref("guests/" + id).once("value")).val(); if (g) out.push({...g, id}); }
+      return out;
+    },
     /* หน้าแขกเขียนได้เฉพาะ checkedIn / checkedInAt ของรายชื่อที่มีอยู่ (ตาม rules) */
     update(id, o){ return ref.child(id).update({checkedIn:o.checkedIn, checkedInAt:o.checkedInAt}); }
   };
@@ -202,7 +216,7 @@ if (useFB) {
   const save = () => { localStorage.setItem(KEY, JSON.stringify(store)); emit(); };
   let emit = () => {};
   DB = {
-    sub(cb){ emit = () => cb(Object.entries(store).map(([id,g]) => ({...g,id}))); emit(); },
+    async lookup(phone){ const st = JSON.parse(localStorage.getItem(KEY) || "null") || store; return Object.entries(st).filter(([id,g]) => normPhone(g.phone) === phone).map(([id,g]) => ({...g, id})); },
     update(id,o){ store[id] = {...store[id],...o}; save(); return Promise.resolve(); },
     add(o){ const k = "g"+Date.now()+Math.random().toString(36).slice(2,6); store[k] = o; save(); return Promise.resolve(k); },
     bulk(list){ list.forEach((g,i) => store["i"+Date.now()+i] = g); save(); return Promise.resolve(); }
@@ -218,75 +232,75 @@ function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTi
 const norm = s => String(s||"").toLowerCase().replace(/\s+/g," ").trim();
 
 /* ============ Router ============ */
-let view = {name:"landing"}, wTimer;
+let view = {name:"search"}, wTimer, busy = 0;
 function go(name, data){ clearTimeout(wTimer); view = {name, ...data}; render(); window.scrollTo(0,0); }
-function render(){ ({landing,search,confirm:confirmV,welcome}[view.name])(); }
+function render(){ ({search,confirm:confirmV,welcome}[view.name])(); }
 const A = html => { $("#app").innerHTML = html; };
+const msgHtml = t => `<p class="sub" style="margin-top:14px">${esc(t)}</p>`;
 
-/* ---- Landing ---- */
-function landing(){
-  A(`<div class="wrap hero">
-    <button class="btn block" id="enter">Enter</button>
-  </div>`);
-  $("#enter").onclick = () => go("search",{q:""});
-}
-
-/* ---- Search (ค้นหาจากชื่อเท่านั้น ไม่ auto complete: กดปุ่มหรือ Enter) ---- */
+/* ---- Search: ค้นหาด้วยเบอร์โทรศัพท์ (พิมพ์ครบ 10 หลักค้นหาให้อัตโนมัติ / กด Enter หรือปุ่มค้นหา) ---- */
+let reqId = 0;
 function search(){
-  const q = view.q || "", sq = view.sq || "";
+  const q = view.q || "";
   A(`<div class="wrap">
-    <div class="top"><button class="link" id="back">← กลับ</button><span></span></div>
-    <h2>ค้นหาชื่อ</h2>
-    <div class="row" style="flex-wrap:nowrap"><input id="q" type="text" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์ชื่อ" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
+    <h2>ค้นหาด้วยเบอร์โทรศัพท์</h2>
+    <p class="sub" style="margin-bottom:14px">พิมพ์เบอร์โทรศัพท์ที่ลงทะเบียนไว้ แล้วเลือกชื่อของคุณ</p>
+    <div class="row" style="flex-wrap:nowrap"><input id="q" type="tel" inputmode="numeric" enterkeyhint="search" autocomplete="off" maxlength="16" placeholder="เบอร์โทรศัพท์ เช่น 0812345678" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
     <div id="res"></div>
   </div>`);
-  const inp = $("#q"); inp.focus(); inp.setSelectionRange(q.length,q.length);
-  $("#back").onclick = () => go("landing");
-  const run = () => { view.q = inp.value; view.sq = inp.value.trim(); search(); };
-  inp.oninput = () => { view.q = inp.value; };
-  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); run(); } };
+  const inp = $("#q"), res = $("#res"); inp.focus(); inp.setSelectionRange(q.length, q.length);
+  let hits = [], t;
+  const run = async () => {
+    clearTimeout(t); view.q = inp.value; const d = normPhone(inp.value), my = ++reqId;
+    if (!d) { res.innerHTML = ""; hits = []; return; }
+    if (d.length < 9) { res.innerHTML = msgHtml("กรุณาพิมพ์เบอร์โทรศัพท์ให้ครบ"); hits = []; return; }
+    res.innerHTML = msgHtml("กำลังค้นหา...");
+    let found;
+    try { found = await DB.lookup(d); } catch(e){ console.error(e); if (my === reqId) res.innerHTML = msgHtml("ค้นหาไม่สำเร็จ กรุณาลองอีกครั้ง หรือติดต่อเจ้าหน้าที่ลงทะเบียน"); return; }
+    if (my !== reqId) return;
+    hits = found;
+    res.innerHTML = hits.length
+      ? `<div class="list" role="listbox">${hits.map((g,i) => `<button class="item" role="option" data-i="${i}"><span><b>${esc(full(g))}</b><small>${esc(g.company||"-")}</small></span>${g.checkedIn?'<span class="tag ok">เช็คอินแล้ว</span>':""}</button>`).join("")}</div>`
+      : msgHtml("ไม่พบเบอร์นี้ในรายชื่อ กรุณาตรวจสอบเบอร์โทรศัพท์ หรือติดต่อเจ้าหน้าที่ลงทะเบียน");
+    res.querySelectorAll(".item").forEach(b => b.onclick = () => go("confirm", {g:hits[+b.dataset.i]}));
+  };
+  inp.oninput = () => { view.q = inp.value; clearTimeout(t); ++reqId; hits = []; const d = normPhone(inp.value); if (d.length >= 10) t = setTimeout(run, 250); else res.innerHTML = ""; };
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); if (hits.length === 1) go("confirm", {g:hits[0]}); else run(); } };
   $("#go").onclick = run;
-  const n = norm(sq); if (!n) return;
-  const hits = guests.filter(g => norm(g.name).includes(n))
-    .sort((a,b) => full(a).localeCompare(full(b),"th") || (a.company||"").localeCompare(b.company||"","th")).slice(0,50);
-  const box = $("#res");
-  box.innerHTML = hits.length ? `<div class="list">${hits.map(g => `<button class="item" data-id="${g.id}"><span><b>${esc(full(g))}</b><small>${esc(g.company||"-")}</small></span>${g.checkedIn?'<span class="tag ok">เช็คอินแล้ว</span>':""}</button>`).join("")}</div>`
-    : `<p class="sub" style="margin-top:14px">ไม่พบชื่อ “${esc(sq)}” กรุณาตรวจสอบการสะกด หรือติดต่อเจ้าหน้าที่ลงทะเบียน</p>`;
-  box.querySelectorAll(".item").forEach(b => b.onclick = () => go("confirm",{id:b.dataset.id}));
+  if (q) run();
 }
 
 /* ---- Confirm ---- */
 function confirmV(){
-  const g = guests.find(x => x.id === view.id); if (!g) return go("search",{q:""});
-  A(`<div class="wrap"><h2>ยืนยันข้อมูล</h2><div class="card">
+  const g = view.g; if (!g) return go("search", {q:""});
+  A(`<div class="wrap"><h2>ยืนยันข้อมูลของคุณ</h2><div class="card">
     ${g.checkedIn ? `<div class="warn">คุณเช็คอินไปแล้วเมื่อ ${esc(fmt(g.checkedInAt))}</div>` : ""}
     <dl><dt>ชื่อ-นามสกุล</dt><dd>${esc(g.name)}</dd><dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd></dl>
     <button class="btn block" id="ci">Check in</button>
     <button class="btn danger block" id="cn" style="margin-top:10px">Cancel</button>
   </div></div>`);
-  $("#ci").onclick = () => checkIn(g.id, {});
-  $("#cn").onclick = () => go("search",{q:""});
+  $("#ci").onclick = () => checkIn(g);
+  $("#cn").onclick = () => go("search", {q:""});
 }
-async function checkIn(id){
-  const g = guests.find(x => x.id === id); if (!g) return go("search",{q:""});
-  if (g.checkedIn) return go("welcome",{g});   /* เช็คอินแล้ว ไม่เขียนซ้ำ */
+async function checkIn(g){
+  if (g.checkedIn) return go("welcome", {g});   /* เช็คอินแล้ว ไม่เขียนซ้ำ */
   const upd = {checkedIn:true, checkedInAt:Date.now()};
-  try { await DB.update(id, upd); go("welcome",{g:{...g,...upd}}); }
-  catch(e){ console.error(e); toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง หรือติดต่อเจ้าหน้าที่"); }
+  $("#ci").disabled = true;
+  try { await DB.update(g.id, upd); go("welcome", {g:{...g,...upd}}); }
+  catch(e){ console.error(e); $("#ci").disabled = false; toast("บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง หรือติดต่อเจ้าหน้าที่"); }
 }
 
-/* ---- Welcome ---- */
+/* ---- Welcome (กลับหน้าค้นหาเองใน 7 วินาที) ---- */
 function welcome(){
   const g = view.g;
   A(`<div class="welcome"><div class="tick" aria-hidden="true">✓</div>
     <h1>ยินดีต้อนรับ คุณ${esc(full(g))}</h1>
     ${g.company ? `<p>${/^(บริษัท|บจก|บมจ|หจก|ห้างหุ้นส่วน|ธนาคาร)/.test(g.company)?"":"บริษัท "}${esc(g.company)}</p>` : "<p></p>"}
     <button class="btn" id="dn">เสร็จสิ้น</button></div>`);
-  $("#dn").onclick = () => go("landing");
-  wTimer = setTimeout(() => go("landing"), 7000);
+  $("#dn").onclick = () => go("search", {q:""});
+  wTimer = setTimeout(() => go("search", {q:""}), 7000);
 }
 
-DB.sub(list => { guests = list; if (view.name === "search") render(); });
 render();
 </script>
 </body>

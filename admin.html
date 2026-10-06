@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 :root{--bg:#f4f5f1;--card:#fff;--ink:#17231f;--mute:#66736d;--line:#dde2dc;--brand:#6b2fa0;--brand2:#54247f;--gold:#e8a317;--red:#b3392f;--ok:#1f7a4d}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
@@ -163,6 +164,16 @@ const VENUE = "หอประชุมมหิศร ธนาคารไท�
 /* ============ Data layer ============ */
 const FIELDS = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]];
 let guests = [], listeners = [], DB;
+/* ===== ค้นหาด้วยเบอร์โทรโดยไม่เปิดเผยเบอร์ในฐานข้อมูลสาธารณะ =====
+   เก็บ /lookup/{SHA-256(เบอร์)}/{guestId} = true  — แขกอ่านได้เฉพาะ "ราย key" (ต้องรู้เบอร์ถึงจะเจอ) ลิสต์ทั้งหมดไม่ได้
+   LOOKUP_SALT ต้องเหมือนกันทุกไฟล์ (checkin / register / admin) */
+const LOOKUP_SALT = "lg2027-lookup";
+const normPhone = p => { let d = String(p || "").replace(/\D/g, ""); if (/^66\d{9}$/.test(d)) d = "0" + d.slice(2); else if (/^[1-9]\d{8}$/.test(d)) d = "0" + d; return d; };
+async function phoneKey(p){
+  if (!(window.crypto && crypto.subtle)) throw new Error("ต้องเปิดผ่าน https");
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(LOOKUP_SALT + "|" + normPhone(p)));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
 const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
 /* ข้อมูลแยก 2 ส่วน: /guests = สาธารณะ (ชื่อ บริษัท สถานะเช็คอิน) | /private = เฉพาะเจ้าหน้าที่ (เบอร์โทร อีเมล กลุ่มธุรกิจ) */
 const PRIVK = ["phone","email","group"];
@@ -171,21 +182,44 @@ if (useFB) {
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(), root = db.ref();
   let pubM = {}, prvM = {};
-  const merge = cb => cb(Object.keys(pubM).map(id => ({...pubM[id], ...(prvM[id]||{}), id})));
+  let syncT = null; const synced = new Set();
+  /* เติมดัชนีค้นหาเบอร์โทรให้รายชื่อที่ยังไม่มี (เพิ่มอย่างเดียว ไม่ลบ) */
+  async function syncLookup(){
+    const todo = Object.keys(pubM).map(id => ({id, phone:(prvM[id]||{}).phone || pubM[id].phone})).filter(g => normPhone(g.phone) && !synced.has(g.id+"|"+g.phone));
+    if (!todo.length) return;
+    const have = (await root.child("lookup").once("value")).val() || {}, m = {};
+    for (const g of todo) { const k = await phoneKey(g.phone); if (!(have[k] && have[k][g.id])) m["lookup/"+k+"/"+g.id] = true; }
+    if (Object.keys(m).length) { await root.update(m); toast("อัปเดตดัชนีค้นหาเบอร์โทร " + Object.keys(m).length + " รายการ"); }
+    todo.forEach(g => synced.add(g.id+"|"+g.phone));
+  }
+  /* ตัวนับลำดับสำหรับแขก walk-in: ให้ไม่น้อยกว่าลำดับสูงสุดของรายชื่อที่นำเข้า */
+  async function syncSeq(){
+    const mx = Math.max(0, ...Object.values(pubM).map(g => parseInt(g.seq) || 0)), r = root.child("meta/maxSeq");
+    if (mx > ((await r.once("value")).val() || 0)) await r.set(mx);
+  }
+  const merge = cb => { cb(Object.keys(pubM).map(id => ({...pubM[id], ...(prvM[id]||{}), id}))); clearTimeout(syncT); syncT = setTimeout(() => { syncLookup().catch(e => console.error(e)); syncSeq().catch(e => console.error(e)); }, 1500); };
   const errH = e => { console.error(e); toast("เชื่อมต่อฐานข้อมูลไม่ได้ (ตรวจสอบ databaseURL และ rules)"); };
   DB = {
     sub(cb){
       db.ref("guests").on("value", s => { pubM = s.val() || {}; merge(cb); }, errH);
       db.ref("private").on("value", s => { prvM = s.val() || {}; merge(cb); }, errH);
     },
-    update(id, o){ return root.update(splitPaths(id, o, {})); },
-    add(o){ const k = db.ref("guests").push().key; return root.update(splitPaths(k, o, {})).then(() => k); },
-    bulk(list){ const m = {}; list.forEach(g => splitPaths(db.ref("guests").push().key, g, m)); return root.update(m); },
-    reset(kind){
-      if (kind === "all") return root.update({guests:null, "private":null});
+    async update(id, o){
+      const m = splitPaths(id, o, {});
+      if (o.phone !== undefined) {   /* เปลี่ยนเบอร์: ลบดัชนีเดิม เพิ่มดัชนีใหม่ */
+        const old = guests.find(x => x.id === id), nk = normPhone(o.phone) ? await phoneKey(o.phone) : null, ok = old && normPhone(old.phone) ? await phoneKey(old.phone) : null;
+        if (ok && ok !== nk) m["lookup/"+ok+"/"+id] = null;
+        if (nk) m["lookup/"+nk+"/"+id] = true;
+      }
+      return root.update(m);
+    },
+    async add(o){ const k = db.ref("guests").push().key, m = splitPaths(k, o, {}); if (normPhone(o.phone)) m["lookup/"+(await phoneKey(o.phone))+"/"+k] = true; await root.update(m); return k; },
+    async bulk(list){ const m = {}; for (const g of list) { const id = db.ref("guests").push().key; splitPaths(id, g, m); if (normPhone(g.phone)) m["lookup/"+(await phoneKey(g.phone))+"/"+id] = true; } return root.update(m); },
+    async reset(kind){
+      if (kind === "all") return root.update({guests:null, "private":null, lookup:null, meta:null});
       const m = {};
-      guests.forEach(g => { if (kind === "walkin") { if (g.walkIn) { m["guests/"+g.id] = null; m["private/"+g.id] = null; } }
-        else { m["guests/"+g.id+"/checkedIn"] = false; m["guests/"+g.id+"/checkedInAt"] = null; } });
+      for (const g of guests) { if (kind === "walkin") { if (g.walkIn) { m["guests/"+g.id] = null; m["private/"+g.id] = null; if (normPhone(g.phone)) m["lookup/"+(await phoneKey(g.phone))+"/"+g.id] = null; } }
+        else { m["guests/"+g.id+"/checkedIn"] = false; m["guests/"+g.id+"/checkedInAt"] = null; } }
       return Object.keys(m).length ? root.update(m) : null;
     },
     /* ข้อมูลเก่าที่เบอร์/อีเมล/กลุ่ม ยังอยู่ในส่วนสาธารณะ */
@@ -233,7 +267,8 @@ function dash(){
   const cols = [["seq","ลำดับ"],["name","ชื่อ-นามสกุล"],["phone","เบอร์โทรศัพท์"],["email","E-mail"],["company","ชื่อบริษัท"],["group","กลุ่มธุรกิจ"]].concat(tab==="all"?[["checkedIn","สถานะ"]]:[]).concat(tab!=="out"?[["checkedInAt","เวลาเช็คอิน"]]:[]);
   A(`<div class="wrap wide">
     <div class="top"><h1 style="margin:0;font-size:26px">Dashboard</h1><div class="row" style="flex:none">
-      <button class="btn ghost sm" id="imp">+ เพิ่มรายชื่อ</button><select id="expk" aria-label="ประเภทข้อมูลที่ export" style="width:auto;padding:6px 10px;font-size:15px;min-height:38px"><option value="all">ทั้งหมด (แยก sheet)</option><option value="in">เช็คอินแล้ว</option><option value="out">ยังไม่มา</option><option value="walk">Walk-in เท่านั้น</option></select><button class="btn sm" id="exp">Export Excel</button><button class="btn danger sm" id="rst">Reset ข้อมูล</button></div></div>
+      <button class="btn ghost sm" id="imp">+ เพิ่มรายชื่อ</button><select id="expk" aria-label="ประเภทข้อมูลที่ export" style="width:auto;padding:6px 10px;font-size:15px;min-height:38px"><option value="all">ทั้งหมด (แยก sheet)</option><option value="in">เช็คอินแล้ว</option><option value="out">ยังไม่มา</option><option value="walk">Walk-in เท่านั้น</option></select><button class="btn sm" id="exp">Export Excel</button><button class="btn danger sm" id="rst">Reset ข้อมูล</button>${useFB?'<button class="btn ghost sm" id="lo">ออกจากระบบ</button>':""}</div></div>
+    ${DB.legacy && DB.legacy() ? `<div class="warn" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span>พบข้อมูลส่วนตัว (เบอร์โทร/อีเมล/กลุ่ม) ${DB.legacy()} รายการ ที่ยังอยู่ในส่วนที่คนทั่วไปอ่านได้ ควรย้ายไปส่วนที่ปลอดภัย</span><button class="btn sm" id="mig">ย้ายข้อมูลให้ปลอดภัย</button></div>` : ""}
     
     <div class="stats"><div class="stat"><span>รวมทั้งหมด</span><b>${guests.length}</b></div><div class="stat"><span>Check in แล้ว</span><b style="color:var(--ok)">${nIn}</b></div><div class="stat"><span>ยังไม่ Check in</span><b>${guests.length-nIn}</b></div><div class="stat" id="wst" style="cursor:pointer"><span>แขก Walk-in</span><b style="color:var(--brand)">${nW}</b></div></div>
     <div class="bar" aria-label="${pct}%"><i style="width:${pct}%"></i></div>
@@ -255,6 +290,8 @@ function dash(){
   $("#exp").onclick = () => exportXlsx($("#expk").value);
   $("#imp").onclick = openAdd;
   $("#rst").onclick = openReset;
+  const lo = $("#lo"); if (lo) lo.onclick = signOutStaff;
+  const mg = $("#mig"); if (mg) mg.onclick = async () => { try { await DB.migrate(); toast("ย้ายข้อมูลแล้ว"); } catch(e){ console.error(e); toast("ย้ายไม่สำเร็จ"); } };
 }
 function exportXlsx(kind="all"){
   const map = g => ({"ลำดับ":g.seq||"","ชื่อ-นามสกุล":g.name||"","เบอร์โทรศัพท์":g.phone||"","E-mail":g.email||"","ชื่อบริษัท":g.company||"","กลุ่มธุรกิจ":g.group||"","สถานะ":g.checkedIn?"เช็คอินแล้ว":"ยังไม่มา","เวลาเช็คอิน":g.checkedInAt?fmt(g.checkedInAt):"","แขกหน้างาน":g.walkIn?"ใช่":""});
@@ -418,8 +455,41 @@ function openAdd(){
 }
 
 
-/* ไม่มีระบบล็อกอิน: เปิดหน้าได้ทันที */
-function requireStaff(start){ return start(); }
+/* ===== เข้าสู่ระบบเจ้าหน้าที่ (Firebase Auth อีเมล/รหัสผ่าน + รายชื่อผู้มีสิทธิ์ที่ /admins/{uid}) ===== */
+function requireStaff(start){
+  if (!useFB) return start();   /* โหมดทดลองไม่ต้องล็อกอิน */
+  let started = false;
+  const show = h => { document.getElementById("app").innerHTML = h; };
+  const login = (msg, email = "") => {
+    show(`<div class="wrap" style="max-width:420px"><div class="card"><h2 style="margin-top:0">เข้าสู่ระบบเจ้าหน้าที่</h2>
+      <label for="em">E-mail</label><input id="em" type="email" autocomplete="username" value="${esc(email)}">
+      <label for="pw">รหัสผ่าน</label><input id="pw" type="password" autocomplete="current-password">
+      ${msg ? `<p role="alert" style="color:var(--red);margin:10px 0 0">${esc(msg)}</p>` : ""}
+      <button class="btn block" id="li" style="margin-top:18px">เข้าสู่ระบบ</button></div></div>`);
+    const go = () => { const b = document.getElementById("li"); b.disabled = true; const em = document.getElementById("em").value.trim();
+      firebase.auth().signInWithEmailAndPassword(em, document.getElementById("pw").value).catch(() => login("อีเมลหรือรหัสผ่านไม่ถูกต้อง", em)); };
+    document.getElementById("li").onclick = go;
+    document.getElementById("pw").onkeydown = e => { if (e.key === "Enter") go(); };
+    document.getElementById("em").onkeydown = e => { if (e.key === "Enter") document.getElementById("pw").focus(); };
+    (email ? document.getElementById("pw") : document.getElementById("em")).focus();
+  };
+  const noAccess = u => {
+    show(`<div class="wrap" style="max-width:520px"><div class="card"><h2 style="margin-top:0">บัญชีนี้ยังไม่มีสิทธิ์เข้าหน้านี้</h2>
+      <p>ให้เจ้าของระบบเพิ่ม UID ด้านล่างใน Realtime Database ที่ <b>admins</b> (ชื่อ = UID, ค่า = true) แล้วโหลดหน้านี้ใหม่</p>
+      <p style="word-break:break-all;user-select:all;background:var(--bg);padding:10px;border-radius:10px;font-family:monospace">${esc(u.uid)}</p>
+      <button class="btn ghost block" id="lo2">ออกจากระบบ</button></div></div>`);
+    document.getElementById("lo2").onclick = () => firebase.auth().signOut();
+  };
+  firebase.auth().onAuthStateChanged(async u => {
+    if (!u) { started = false; return login(); }
+    try {
+      const ok = (await firebase.database().ref("admins/" + u.uid).once("value")).val() === true;
+      if (!ok) return noAccess(u);
+      if (!started) { started = true; start(); }
+    } catch (e) { console.error(e); noAccess(u); }
+  });
+}
+const signOutStaff = () => firebase.auth().signOut().then(() => location.reload());
 requireStaff(() => DB.sub(list => { guests = list; dash(); }));
 </script>
 </body>

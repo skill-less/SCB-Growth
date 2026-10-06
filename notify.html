@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 :root{--bg:#f4f5f1;--card:#fff;--ink:#17231f;--mute:#66736d;--line:#dde2dc;--brand:#6b2fa0;--brand2:#54247f;--gold:#e8a317;--red:#b3392f;--ok:#1f7a4d}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1714;--card:#18231f;--ink:#eef3ef;--mute:#9aa9a1;--line:#2b3a34;--brand:#b58ae6;--brand2:#9d6fd4;--gold:#f0b73a;--red:#e06a5f;--ok:#4cc38a}}
@@ -179,10 +180,10 @@ function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTi
 
 /* ===== Data: อ่านอย่างเดียว (real-time) ===== */
 const useFB = !!(firebaseConfig.apiKey && firebaseConfig.databaseURL);
+if (useFB) firebase.initializeApp(firebaseConfig);
 let live = false, onStatus = () => {};
 function subscribe(cb){
   if (useFB) {
-    firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     let pub = {}, prv = {}, lp = false, lv = false;
     const merge = () => { if (lp && lv) cb(Object.keys(pub).map(id => ({...pub[id], ...(prv[id]||{}), id}))); };
@@ -256,18 +257,53 @@ function render(){
   $("#app").innerHTML = `<div class="wrap wide">
     <div class="hd"><h1 style="margin:0;font-size:26px">แจ้งเตือนแบบ Live</h1>
       <div class="row" style="flex:none;align-items:center"><span class="live ${live?"on":""}" id="st"><i></i>${live ? "เชื่อมต่อแล้ว" : "กำลังเชื่อมต่อ..."}</span>
-      <button class="btn ghost sm" id="snd">เสียงแจ้งเตือน: ${sound ? "เปิด" : "ปิด"}</button></div></div>
+      <button class="btn ghost sm" id="snd">เสียงแจ้งเตือน: ${sound ? "เปิด" : "ปิด"}</button>${useFB?'<button class="btn ghost sm" id="lo">ออกจากระบบ</button>':""}</div></div>
     <p class="sub" style="margin:4px 0 14px">รายการใหม่จะขึ้นด้านบนสุดทันที ไม่ต้องรีเฟรชหน้า</p>
     <div class="tabs" role="tablist"><button class="tab" role="tab" data-t="ci" aria-selected="${tab==="ci"}">Check-in (${ci.length})${bd(unseen.ci)}</button>
       <button class="tab" role="tab" data-t="reg" aria-selected="${tab==="reg"}">ลงทะเบียนใหม่ (${reg.length})${bd(unseen.reg)}</button></div>
     <div id="feed">${list.length ? list.slice(0,300).map(g => msg(g, kind)).join("") : `<div class="empty">${tab==="ci" ? "ยังไม่มีการเช็คอิน — จะแสดงที่นี่ทันทีเมื่อมีคนเช็คอิน" : "ยังไม่มีการลงทะเบียนหน้างาน — จะแสดงที่นี่ทันทีเมื่อมีแขกลงทะเบียนเพิ่ม"}</div>`}</div></div>`;
   document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.t; unseen[tab] = 0; render(); });
+  const lo = $("#lo"); if (lo) lo.onclick = signOutStaff;
   $("#snd").onclick = () => { sound = !sound; if (sound) { const s = sound; beep(); } render(); };
 }
 onStatus = () => { const e = $("#st"); if (e) { e.className = "live " + (live ? "on" : ""); e.lastChild.textContent = live ? "เชื่อมต่อแล้ว" : "กำลังเชื่อมต่อ..."; } };
+/* ===== เข้าสู่ระบบเจ้าหน้าที่ (Firebase Auth อีเมล/รหัสผ่าน + รายชื่อผู้มีสิทธิ์ที่ /admins/{uid}) ===== */
+function requireStaff(start){
+  if (!useFB) return start();   /* โหมดทดลองไม่ต้องล็อกอิน */
+  let started = false;
+  const show = h => { document.getElementById("app").innerHTML = h; };
+  const login = (msg, email = "") => {
+    show(`<div class="wrap" style="max-width:420px"><div class="card"><h2 style="margin-top:0">เข้าสู่ระบบเจ้าหน้าที่</h2>
+      <label for="em">E-mail</label><input id="em" type="email" autocomplete="username" value="${esc(email)}">
+      <label for="pw">รหัสผ่าน</label><input id="pw" type="password" autocomplete="current-password">
+      ${msg ? `<p role="alert" style="color:var(--red);margin:10px 0 0">${esc(msg)}</p>` : ""}
+      <button class="btn block" id="li" style="margin-top:18px">เข้าสู่ระบบ</button></div></div>`);
+    const go = () => { const b = document.getElementById("li"); b.disabled = true; const em = document.getElementById("em").value.trim();
+      firebase.auth().signInWithEmailAndPassword(em, document.getElementById("pw").value).catch(() => login("อีเมลหรือรหัสผ่านไม่ถูกต้อง", em)); };
+    document.getElementById("li").onclick = go;
+    document.getElementById("pw").onkeydown = e => { if (e.key === "Enter") go(); };
+    document.getElementById("em").onkeydown = e => { if (e.key === "Enter") document.getElementById("pw").focus(); };
+    (email ? document.getElementById("pw") : document.getElementById("em")).focus();
+  };
+  const noAccess = u => {
+    show(`<div class="wrap" style="max-width:520px"><div class="card"><h2 style="margin-top:0">บัญชีนี้ยังไม่มีสิทธิ์เข้าหน้านี้</h2>
+      <p>ให้เจ้าของระบบเพิ่ม UID ด้านล่างใน Realtime Database ที่ <b>admins</b> (ชื่อ = UID, ค่า = true) แล้วโหลดหน้านี้ใหม่</p>
+      <p style="word-break:break-all;user-select:all;background:var(--bg);padding:10px;border-radius:10px;font-family:monospace">${esc(u.uid)}</p>
+      <button class="btn ghost block" id="lo2">ออกจากระบบ</button></div></div>`);
+    document.getElementById("lo2").onclick = () => firebase.auth().signOut();
+  };
+  firebase.auth().onAuthStateChanged(async u => {
+    if (!u) { started = false; return login(); }
+    try {
+      const ok = (await firebase.database().ref("admins/" + u.uid).once("value")).val() === true;
+      if (!ok) return noAccess(u);
+      if (!started) { started = true; start(); }
+    } catch (e) { console.error(e); noAccess(u); }
+  });
+}
+const signOutStaff = () => firebase.auth().signOut().then(() => location.reload());
 setInterval(() => { if (!first) render(); }, 15000);
-render();
-subscribe(onData);
+requireStaff(() => { render(); subscribe(onData); });
 </script>
 </body>
 </html>
