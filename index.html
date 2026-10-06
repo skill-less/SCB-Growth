@@ -174,7 +174,7 @@ const firebaseConfig = {
   messagingSenderId: "148350658850",
   appId: "1:148350658850:web:f9c9d459ea037c7fec9d7b"
 };
-const EVENT_NAME = "LOGISTICS GROWTH 2027";
+const EVENT_NAME = "GROWTH IN LOGISTICS 2027";
 const VENUE = "หอประชุมมหิศร ธนาคารไทยพาณิชย์ สำนักงานใหญ่";
 /* โครงสร้าง: /guests/{id} = ชื่อ บริษัท สถานะเช็คอิน (หน้านี้อ่านเพื่อแนะนำชื่อ) | /private/{id} = เบอร์ อีเมล กลุ่ม (เฉพาะ admin) */
 /* ============ Data layer ============ */
@@ -238,19 +238,19 @@ function render(){ ({search,confirm:confirmV,welcome}[view.name])(); }
 const A = html => { $("#app").innerHTML = html; };
 const msgHtml = t => `<p class="sub" style="margin-top:14px">${esc(t)}</p>`;
 
-/* ---- Search: ค้นหาด้วยเบอร์โทรศัพท์ (พิมพ์ครบ 10 หลักค้นหาให้อัตโนมัติ / กด Enter หรือปุ่มค้นหา) ---- */
+/* ---- Search: ค้นหาด้วยเบอร์โทรศัพท์ (ค้นให้อัตโนมัติตั้งแต่ 9 หลัก — ข้อความ "ไม่พบ" จะแสดงเมื่อพิมพ์ครบ 10 หลัก หรือกด Enter/ปุ่มค้นหา) ---- */
 let reqId = 0;
 function search(){
   const q = view.q || "";
   A(`<div class="wrap">
     <h2>ค้นหาด้วยเบอร์โทรศัพท์</h2>
     <p class="sub" style="margin-bottom:14px">พิมพ์เบอร์โทรศัพท์ที่ลงทะเบียนไว้ แล้วเลือกชื่อของคุณ</p>
-    <div class="row" style="flex-wrap:nowrap"><input id="q" type="tel" inputmode="numeric" enterkeyhint="search" autocomplete="off" maxlength="16" placeholder="เบอร์โทรศัพท์ เช่น 0812345678" value="${esc(q)}" style="min-width:0"></div>
+    <div class="row" style="flex-wrap:nowrap"><input id="q" type="tel" inputmode="numeric" enterkeyhint="search" autocomplete="off" maxlength="16" placeholder="เบอร์โทรศัพท์ เช่น 0812345678" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
     <div id="res"></div>
   </div>`);
   const inp = $("#q"), res = $("#res"); inp.focus(); inp.setSelectionRange(q.length, q.length);
   let hits = [], t;
-  const run = async () => {
+  const run = async (explicit = true) => {
     clearTimeout(t); view.q = inp.value; const d = normPhone(inp.value), my = ++reqId;
     if (!d) { res.innerHTML = ""; hits = []; return; }
     if (d.length < 9) { res.innerHTML = msgHtml("กรุณาพิมพ์เบอร์โทรศัพท์ให้ครบ"); hits = []; return; }
@@ -261,19 +261,19 @@ function search(){
     hits = found;
     res.innerHTML = hits.length
       ? `<div class="list" role="listbox">${hits.map((g,i) => `<button class="item" role="option" data-i="${i}"><span><b>${esc(full(g))}</b><small>${esc(g.company||"-")}</small></span>${g.checkedIn?'<span class="tag ok">เช็คอินแล้ว</span>':""}</button>`).join("")}</div>`
-      : msgHtml("ไม่พบเบอร์นี้ในรายชื่อ กรุณาตรวจสอบเบอร์โทรศัพท์ หรือติดต่อเจ้าหน้าที่ลงทะเบียน");
+      : (explicit === true || d.length >= 10) ? msgHtml("ไม่พบเบอร์นี้ในรายชื่อ กรุณาตรวจสอบเบอร์โทรศัพท์ หรือติดต่อเจ้าหน้าที่ลงทะเบียน") : "";
     res.querySelectorAll(".item").forEach(b => b.onclick = () => go("confirm", {g:hits[+b.dataset.i]}));
   };
-  inp.oninput = () => { view.q = inp.value; clearTimeout(t); ++reqId; hits = []; const d = normPhone(inp.value); if (d.length >= 10) t = setTimeout(run, 250); else res.innerHTML = ""; };
+  inp.oninput = () => { view.q = inp.value; clearTimeout(t); ++reqId; hits = []; const d = normPhone(inp.value); if (d.length >= 9) t = setTimeout(() => run(false), 250); else res.innerHTML = ""; };
   inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); if (hits.length === 1) go("confirm", {g:hits[0]}); else run(); } };
-  // $("#go").onclick = run;
+  $("#go").onclick = () => run(true);
   if (q) run();
 }
 
 /* ---- Confirm ---- */
 function confirmV(){
   const g = view.g; if (!g) return go("search", {q:""});
-  A(`<div class="wrap"><h2>ยืนยันข้อมูลของคุณ</h2><div class="card">
+  A(`<div class="wrap"><h2>ยืนยันข้อมูล</h2><div class="card">
     ${g.checkedIn ? `<div class="warn">คุณเช็คอินไปแล้วเมื่อ ${esc(fmt(g.checkedInAt))}</div>` : ""}
     <dl><dt>ชื่อ-นามสกุล</dt><dd>${esc(g.name)}</dd><dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd></dl>
     <button class="btn block" id="ci">Check in</button>
