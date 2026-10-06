@@ -245,7 +245,7 @@ function search(){
   A(`<div class="wrap">
     <h2>ค้นหาด้วยเบอร์โทรศัพท์</h2>
     <p class="sub" style="margin-bottom:14px">พิมพ์เบอร์โทรศัพท์ที่ลงทะเบียนไว้ แล้วเลือกชื่อของคุณ</p>
-    <div class="row" style="flex-wrap:nowrap"><input id="q" type="tel" inputmode="numeric" enterkeyhint="search" autocomplete="off" maxlength="16" placeholder="เบอร์โทรศัพท์ เช่น 0812345678" value="${esc(q)}" style="min-width:0"><button class="btn" id="go" style="flex:none">ค้นหา</button></div>
+    <div class="row" style="flex-wrap:nowrap"><input id="q" type="tel" inputmode="numeric" enterkeyhint="search" autocomplete="off" maxlength="16" placeholder="เบอร์โทรศัพท์ เช่น 0812345678" value="${esc(q)}" style="min-width:0"></div>
     <div id="res"></div>
   </div>`);
   const inp = $("#q"), res = $("#res"); inp.focus(); inp.setSelectionRange(q.length, q.length);
@@ -266,7 +266,7 @@ function search(){
   };
   inp.oninput = () => { view.q = inp.value; clearTimeout(t); ++reqId; hits = []; const d = normPhone(inp.value); if (d.length >= 10) t = setTimeout(run, 250); else res.innerHTML = ""; };
   inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); if (hits.length === 1) go("confirm", {g:hits[0]}); else run(); } };
-  $("#go").onclick = run;
+  // $("#go").onclick = run;
   if (q) run();
 }
 
