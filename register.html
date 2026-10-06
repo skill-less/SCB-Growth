@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ลงทะเบียนแขกหน้างาน</title>
+<title>ลงทะเบียน Walk in</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -216,7 +216,7 @@ function validate(o){
 function form(){
   clearTimeout(wTimer);
   const attr = k => k==="phone" ? 'type="tel" inputmode="tel"' : k==="email" ? 'type="email" inputmode="email"' : 'type="text"';
-  $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียนแขกหน้างาน</h1><p class="sub">${esc(EVENT_NAME)} — กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
+  $("#app").innerHTML = `<div class="wrap"><h1 style="font-size:26px">ลงทะเบียน</h1><p class="sub">กรุณากรอกข้อมูลให้ครบทุกช่อง</p><div class="card">
     ${FIELDS.map(([k,l]) => k==="group" ? `<label id="gl">${l} <span style="color:var(--red)">*</span></label>
       <div role="radiogroup" aria-labelledby="gl">${GROUPS.map((x,i) => `<label class="opt"><input type="radio" name="grp" value="${i}" ${String(draft.gsel)===String(i)?"checked":""}><span>${i+1}. ${x}</span></label>`).join("")}</div>
       <input id="n_gother" type="text" autocomplete="off" placeholder="โปรดระบุกลุ่มธุรกิจ" value="${esc(draft.gother||"")}" ${String(draft.gsel)===String(OTHER)?"":"hidden"} ${errs.group?'aria-invalid="true"':""} style="margin-top:6px">${errs.group?`<p class="err" role="alert">${errs.group}</p>`:""}`
