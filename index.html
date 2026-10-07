@@ -273,7 +273,7 @@ function search(){
 /* ---- Confirm ---- */
 function confirmV(){
   const g = view.g; if (!g) return go("search", {q:""});
-  A(`<div class="wrap"><h2>ยืนยันข้อมูล</h2><div class="card">
+  A(`<div class="wrap"><h2>ยืนยันข้อมูลของคุณ</h2><div class="card">
     ${g.checkedIn ? `<div class="warn">คุณเช็คอินไปแล้วเมื่อ ${esc(fmt(g.checkedInAt))}</div>` : ""}
     <dl><dt>ชื่อ-นามสกุล</dt><dd>${esc(g.name)}</dd><dt>ชื่อบริษัท</dt><dd>${esc(g.company||"-")}</dd></dl>
     <button class="btn block" id="ci">Check in</button>
@@ -295,10 +295,8 @@ function welcome(){
   const g = view.g;
   A(`<div class="welcome"><div class="tick" aria-hidden="true">✓</div>
     <h1>ยินดีต้อนรับ คุณ${esc(full(g))}</h1>
-    ${g.company ? `<p>${/^(บริษัท|บจก|บมจ|หจก|ห้างหุ้นส่วน|ธนาคาร)/.test(g.company)?"":"บริษัท "}${esc(g.company)}</p>` : "<p></p>"}
-    <button class="btn" id="dn">เสร็จสิ้น</button></div>`);
-  $("#dn").onclick = () => go("search", {q:""});
-  wTimer = setTimeout(() => go("search", {q:""}), 7000);
+    ${g.company ? `<p>${/^(บริษัท|บจก|บมจ|หจก|ห้างหุ้นส่วน|ธนาคาร)/.test(g.company)?"":"บริษัท "}${esc(g.company)}</p>` : "<p></p>"}</div>`);
+  /* ไม่มีปุ่มและไม่ redirect: หน้าต้อนรับค้างอยู่จนกว่าจะรีเฟรชหน้าเว็บ */
 }
 
 render();
