@@ -347,7 +347,7 @@ function openEdit(id){
   const close = () => { m.hidden = true; m.innerHTML = ""; document.removeEventListener("keydown", esc2); };
   const esc2 = e => e.key === "Escape" && close();
   document.addEventListener("keydown", esc2);
-  m.querySelector(".ov").onclick = e => e.target.classList.contains("ov") && close();
+  m.querySelector(".ov").onclick = e => { if (e.target.classList.contains("ov")) close(); };
   $("#mx").onclick = $("#ec").onclick = close;
   $("#es").onclick = async () => {
     const o = {}; F.forEach(([k]) => o[k] = $("#e_"+k).value.trim());
@@ -372,7 +372,7 @@ function openReset(){
   };
   const count = k => k==="walkin" ? guests.filter(g => g.walkIn).length : guests.length;
   const shell = body => { m.innerHTML = `<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Reset ข้อมูล" style="max-width:520px"><div class="top"><h2 style="margin:0">Reset ข้อมูล</h2><button class="btn ghost sm" id="mx">ปิด</button></div>${body}</div></div>`;
-    m.querySelector(".ov").onclick = e => e.target.classList.contains("ov") && close(); $("#mx").onclick = close; };
+    m.querySelector(".ov").onclick = e => { if (e.target.classList.contains("ov")) close(); }; $("#mx").onclick = close; };
   const step1 = () => {
     shell(`<p class="hint">เลือกสิ่งที่ต้องการ Reset (ยังไม่มีการลบจนกว่าจะยืนยันในขั้นตอนถัดไป)</p>
       ${Object.entries(opts).map(([k,[t,d]],i) => `<label style="display:flex;gap:10px;align-items:flex-start;color:var(--ink);font-size:17px;margin:12px 0"><input type="radio" name="rk" value="${k}" ${i===0?"checked":""} style="width:auto;margin-top:6px"><span><b>${t}</b><br><small style="color:var(--mute)">${d}</small></span></label>`).join("")}
@@ -406,7 +406,7 @@ function openAdd(){
   const close = () => { m.hidden = true; m.innerHTML = ""; document.removeEventListener("keydown", esc2); };
   const esc2 = e => e.key === "Escape" && close();
   document.addEventListener("keydown", esc2);
-  m.querySelector(".ov").onclick = e => e.target.classList.contains("ov") && close();
+  m.querySelector(".ov").onclick = e => { if (e.target.classList.contains("ov")) close(); };
   $("#mx").onclick = close;
   m.querySelectorAll(".tab").forEach(b => b.onclick = () => { mode = b.dataset.m; m.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t===b)); $("#pf").hidden = mode!=="file"; $("#pp").hidden = mode!=="paste"; });
   const key = g => norm(g.name)+"|"+norm(g.company);
