@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ตรวจสอบรายชื่อ Refer vs Check-in</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- SheetJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase 10.12.2 Compat -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+:root {
+  --font: "DB HelvethaicaX", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --bg: #f4f5f1; --card: #fff; --ink: #17231f; --mute: #66736d; --line: #dde2dc;
+  --brand: #6b2fa0; --brand2: #54247f; --gold: #e8a317; --red: #b3392f; --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: var(--font); background: var(--bg); color: var(--ink);
+  margin: 0; padding: 20px 14px 60px; font-size: 16px; line-height: 1.5;
+  background-image: url(bg.png); background-size: cover; background-position: center;
+  background-attachment: fixed; background-repeat: no-repeat;
+}
+.wrap {
+  max-width: 1400px; margin: 0 auto; background: rgba(255,255,255,0.94);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px; padding: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
+h1 { font-size: 26px; margin: 0 0 6px; font-weight: 700; color: var(--brand2); }
+p.sub { color: var(--mute); margin: 0 0 20px; font-size: 15px; }
+
+.control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.card { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px; }
+.card h2 { font-size: 18px; margin: 0 0 10px; font-weight: 600; }
+.btn {
+  font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 10px 18px;
+  cursor: pointer; background: var(--brand); color: #fff; font-size: 15px; display: inline-flex;
+  align-items: center; justify-content: center; gap: 6px;
+}
+.btn:hover { background: var(--brand2); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn.ghost:hover { background: var(--bg); }
+.btn.danger { background: transparent; color: var(--red); border: 1.5px solid var(--red); }
+.btn.danger:hover { background: #fee2e2; }
+.btn.sm { padding: 6px 12px; font-size: 14px; border-radius: 8px; }
+.btn.block { width: 100%; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat { background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.stat span { font-size: 14px; color: var(--mute); display: block; }
+.stat b { font-size: 30px; line-height: 1.2; display: block; margin-top: 4px; }
+
+.bar-tools { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.tool-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; max-height: 140px; overflow-y: auto; padding: 4px 0; }
+.tab {
+  font: inherit; border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 6px 14px; border-radius: 99px; cursor: pointer; font-size: 14px; font-weight: 500;
+  transition: all .2s;
+}
+.tab:hover { background: var(--bg); }
+.tab[aria-selected="true"] { background: var(--brand); color: #fff; border-color: var(--brand); font-weight: 600; }
+
+.tw { overflow-x: auto; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+th { background: #fafafa; font-weight: 600; color: var(--mute); white-space: nowrap; position: sticky; top: 0; }
+tr:last-child td { border-bottom: none; }
+.tag { font-size: 12px; padding: 3px 9px; border-radius: 99px; font-weight: 600; display: inline-block; white-space: nowrap; }
+.tag.matched { background: #d1fae5; color: #065f46; }
+.tag.missing { background: #fee2e2; color: #991b1b; }
+.tag.extra { background: #fef3c7; color: #92400e; }
+.tag.refer-pill { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; font-weight: 600; }
+
+.status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mute); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #999; }
+.dot.online { background: #10b981; }
+
+input, select {
+  font: inherit; padding: 9px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--card); color: var(--ink); font-size: 15px;
+}
+@media (max-width: 768px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div id="authApp"></div>
+
+<div class="wrap" id="mainApp" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+    <div>
+      <h1>ตรวจสอบรายชื่อแยกตาม Refer vs Checked-in</h1>
+      <p class="sub">เชื่อมต่อสิทธิ์ Admin เพื่ออ่านข้อมูล Real-time จาก Firebase</p>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center;">
+      <div class="status-pill">
+        <span class="dot" id="dbDot"></span>
+        <span id="dbStatus">กำลังเชื่อมต่อฐานข้อมูล...</span>
+      </div>
+      <button class="btn ghost sm" id="btnLogout">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <!-- Cards Config & Import -->
+  <div class="control-grid">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <h2 style="margin:0;">1. ข้อมูลรายชื่อ Refer (Excel)</h2>
+        <button class="btn danger sm" id="btnClearExcel" style="display:none;">ล้างข้อมูลที่จำไว้</button>
+      </div>
+      <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="width:100%; margin-bottom:8px;">
+      <small class="sub" id="fileInfo">รองรับไฟล์ .xlsx / .csv ที่มีคอลัมน์ Refer, ชื่อ หรือ เบอร์โทร</small>
+    </div>
+
+    <div class="card">
+      <h2>2. เกณฑ์ที่ใช้จับคู่ (Match Key)</h2>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <select id="matchKey" style="flex:1;">
+          <option value="phone" selected>เบอร์โทรศัพท์ (แนะนำ)</option>
+          <option value="name">ชื่อ-นามสกุล</option>
+          <option value="company">ชื่อบริษัท</option>
+        </select>
+        <button class="btn sm" id="btnExport">Export Excel</button>
+      </div>
+      <small class="sub" style="display:block; margin-top:8px;">เมื่อมีผู้ลงทะเบียนหรือ Check in หน้าเว็บจะอัปเดตตารางทันที</small>
+    </div>
+  </div>
+
+  <!-- สรุปตัวเลข Stats -->
+  <div class="stats">
+    <div class="stat">
+      <span>รายชื่อใน Excel Refer ทั้งหมด</span>
+      <b id="stRefer">0</b>
+    </div>
+    <div class="stat">
+      <span>Check in แล้ว</span>
+      <b id="stMatched" style="color:var(--ok)">0</b>
+    </div>
+    <div class="stat">
+      <span>ยังไม่ Check in</span>
+      <b id="stMissing" style="color:var(--red)">0</b>
+    </div>
+    <div class="stat">
+      <span>นอกเหนือจาก Refer (Walk-in)</span>
+      <b id="stExtra" style="color:var(--gold)">0</b>
+    </div>
+  </div>
+
+  <!-- แท็บกรอง Refer และช่องค้นหา -->
+  <div class="bar-tools">
+    <div class="tool-header">
+      <b style="font-size:16px;">กรองตาม Refer:</b>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <select id="statusFilter" style="padding:6px 10px; font-size:14px;">
+          <option value="all">สถานะทั้งหมด</option>
+          <option value="matched">เฉพาะที่ Check in แล้ว</option>
+          <option value="missing">เฉพาะที่ยังไม่ Check in</option>
+        </select>
+        <input type="search" id="txtSearch" placeholder="ค้นหาชื่อ, เบอร์, บริษัท..." style="max-width:260px; padding:6px 12px; font-size:14px;">
+      </div>
+    </div>
+    <div class="tabs" id="referTabs" role="tablist">
+      <button class="tab" data-refer="__ALL__" aria-selected="true">ทั้งหมด (0)</button>
+    </div>
+  </div>
+
+  <!-- ตารางผลเปรียบเทียบ -->
+  <div class="tw">
+    <table>
+      <thead>
+        <tr>
+          <th>สถานะ</th>
+          <th>Refer (ผู้แนะนำ)</th>
+          <th>ชื่อ (Excel Refer)</th>
+          <th>ชื่อ (ระบบ Firebase)</th>
+          <th>เบอร์โทร</th>
+          <th>บริษัท</th>
+          <th>กลุ่มธุรกิจ</th>
+          <th>เวลา Check-in</th>
+        </tr>
+      </thead>
+      <tbody id="tbBody">
+        <tr>
+          <td colspan="8" style="text-align:center; padding:30px; color:var(--mute);">กำลังโหลดข้อมูล...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+/* ============ Firebase Configuration ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBiiV4i3gExoT-SbB6uGMeQGmslj34Y_mY",
+  authDomain: "selfcheckin69.firebaseapp.com",
+  databaseURL: "https://selfcheckin69-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "selfcheckin69",
+  storageBucket: "selfcheckin69.firebasestorage.app",
+  messagingSenderId: "148350658850",
+  appId: "1:148350658850:web:f9c9d459ea037c7fec9d7b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+
+const STORAGE_KEY = "checkin_excel_refer_cache_v2";
+
+/* ============ State variables ============ */
+let rtdbGuests = [];
+let excelGuests = [];
+let comparisonResult = [];
+let selectedRefer = "__ALL__";
+let selectedStatus = "all";
+let searchTerm = "";
+
+const ALIAS = {
+  seq: ["ลำดับ","seq","no","no."],
+  refer: ["refer","ผู้แนะนำ","สายงาน","ผู้ชวน","แนะนำโดย","ref","reference"],
+  name: ["ชื่อ-นามสกุล","ชื่อ นามสกุล","name","full name","ชื่อ"],
+  phone: ["เบอร์โทรศัพท์","เบอร์โทร","phone","tel","โทรศัพท์","เบอร์"],
+  email: ["e-mail","email","อีเมล"],
+  company: ["ชื่อบริษัท","บริษัท","company"],
+  group: ["กลุ่มธุรกิจ","group","ประเภทธุรกิจ"]
+};
+
+const normPhone = p => {
+  let d = String(p || "").replace(/\D/g, "");
+  if (/^66\d{9}$/.test(d)) d = "0" + d.slice(2);
+  else if (/^[1-9]\d{8}$/.test(d)) d = "0" + d;
+  return d;
+};
+const normText = s => String(s || "").toLowerCase().replace(/[\s\-_.]/g, "").trim();
+const fmtTime = t => t ? new Date(t).toLocaleString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "-";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ============ 1. Admin Authentication ============ */
+function renderLogin(errMsg = "") {
+  document.getElementById("mainApp").style.display = "none";
+  document.getElementById("authApp").innerHTML = `
+    <div class="wrap" style="max-width:420px; margin-top:60px;">
+      <div class="card">
+        <h2 style="margin-top:0; text-align:center;">เข้าสู่ระบบเจ้าหน้าที่ (Admin)</h2>
+        <p class="sub" style="text-align:center; margin-bottom:16px;">เพื่อดึงข้อมูล Real-time จากระบบลงทะเบียน</p>
+        <label style="display:block; margin:10px 0 4px; font-size:14px; color:var(--mute);">E-mail</label>
+        <input id="loginEm" type="email" value="natto109@hotmail.com" style="width:100%;">
+        <label style="display:block; margin:10px 0 4px; font-size:14px; color:var(--mute);">รหัสผ่าน</label>
+        <input id="loginPw" type="password" value="1234567890" style="width:100%;">
+        ${errMsg ? `<p style="color:var(--red); font-size:14px; margin:10px 0 0;">${esc(errMsg)}</p>` : ""}
+        <button class="btn block" id="btnLoginSubmit" style="margin-top:20px;">เข้าสู่ระบบ</button>
+      </div>
+    </div>`;
+
+  const doLogin = () => {
+    const em = document.getElementById("loginEm").value.trim();
+    const pw = document.getElementById("loginPw").value;
+    const btn = document.getElementById("btnLoginSubmit");
+    btn.disabled = true;
+    btn.textContent = "กำลังตรวจสอบ...";
+
+    auth.signInWithEmailAndPassword(em, pw).catch(err => {
+      console.error(err);
+      renderLogin("อีเมลหรือรหัสผ่านไม่ถูกต้อง (" + err.message + ")");
+    });
+  };
+
+  document.getElementById("btnLoginSubmit").onclick = doLogin;
+  document.getElementById("loginPw").onkeydown = e => { if (e.key === "Enter") doLogin(); };
+}
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById("authApp").innerHTML = "";
+    document.getElementById("mainApp").style.display = "block";
+    loadCachedExcel();
+    listenRTDB();
+  } else {
+    renderLogin();
+  }
+});
+
+document.getElementById("btnLogout").onclick = () => auth.signOut();
+
+/* ============ 2. Real-time Firebase Database ============ */
+let pubGuests = {}, prvGuests = {};
+let dbListening = false;
+
+function listenRTDB() {
+  if (dbListening) return;
+  dbListening = true;
+
+  const dot = document.getElementById("dbDot");
+  const st = document.getElementById("dbStatus");
+
+  const sync = () => {
+    rtdbGuests = Object.keys(pubGuests).map(id => ({
+      id,
+      ...pubGuests[id],
+      ...(prvGuests[id] || {})
+    }));
+    dot.className = "dot online";
+    st.textContent = `เชื่อมต่อ RTDB แล้ว (${rtdbGuests.length} รายชื่อ)`;
+    recompute();
+  };
+
+  db.ref("guests").on("value", snap => {
+    pubGuests = snap.val() || {};
+    sync();
+  }, err => {
+    console.error("guests read error:", err);
+    st.textContent = "อ่าน guests ล้มเหลว";
+  });
+
+  db.ref("private").on("value", snap => {
+    prvGuests = snap.val() || {};
+    sync();
+  }, err => {
+    console.error("private read error:", err);
+  });
+}
+
+/* ============ 3. แคช LocalStorage (ข้อมูล Excel ไม่หาย) ============ */
+function loadCachedExcel() {
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.data) && parsed.data.length > 0) {
+        excelGuests = parsed.data;
+        document.getElementById("fileInfo").textContent = `ใช้ข้อมูลเดิม: ${parsed.fileName || "ไฟล์ที่บันทึกไว้"} (${excelGuests.length} รายการ)`;
+        document.getElementById("btnClearExcel").style.display = "inline-flex";
+      }
+    }
+  } catch (e) {
+    console.error("Load cache error:", e);
+  }
+}
+
+function saveExcelToCache(data, fileName) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      fileName: fileName,
+      updatedAt: Date.now(),
+      data: data
+    }));
+    document.getElementById("btnClearExcel").style.display = "inline-flex";
+  } catch (e) {
+    console.warn("ไม่สามารถบันทึกลง LocalStorage ได้:", e);
+  }
+}
+
+document.getElementById("btnClearExcel").onclick = () => {
+  if (confirm("ต้องการล้างข้อมูล Excel ที่บันทึกไว้ในเบราว์เซอร์ใช่หรือไม่?")) {
+    localStorage.removeItem(STORAGE_KEY);
+    excelGuests = [];
+    document.getElementById("excelFile").value = "";
+    document.getElementById("fileInfo").textContent = "รองรับไฟล์ .xlsx / .csv ที่มีคอลัมน์ Refer, ชื่อ หรือ เบอร์โทร";
+    document.getElementById("btnClearExcel").style.display = "none";
+    recompute();
+  }
+};
+
+/* ============ 4. อ่านไฟล์ Excel ============ */
+document.getElementById("excelFile").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  document.getElementById("fileInfo").textContent = `กำลังโหลด: ${f.name}...`;
+
+  const reader = new FileReader();
+  const isCsv = /\.csv$/i.test(f.name);
+
+  reader.onload = ev => {
+    try {
+      const wb = isCsv
+        ? XLSX.read(ev.target.result, { type: "string", raw: true })
+        : XLSX.read(new Uint8Array(ev.target.result), { type: "array" });
+      
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      excelGuests = parseExcelAoa(rawRows);
+      
+      saveExcelToCache(excelGuests, f.name);
+      document.getElementById("fileInfo").textContent = `อ่านสำเร็จ: ${f.name} (พบ ${excelGuests.length} รายการ)`;
+      selectedRefer = "__ALL__";
+      recompute();
+    } catch (err) {
+      alert("อ่านไฟล์ไม่สำเร็จ: " + err.message);
+      document.getElementById("fileInfo").textContent = "อ่านไฟล์ล้มเหลว กรุณาลองใหม่อีกครั้ง";
+    }
+  };
+
+  if (isCsv) reader.readAsText(f, "utf-8");
+  else reader.readAsArrayBuffer(f);
+});
+
+function parseExcelAoa(aoa) {
+  const cleaned = aoa.map(r => r.map(c => String(c ?? "").trim())).filter(r => r.some(Boolean));
+  if (!cleaned.length) return [];
+
+  let headIdx = -1, colMap = {};
+  for (let i = 0; i < Math.min(cleaned.length, 10); i++) {
+    const m = {};
+    cleaned[i].forEach((cell, ci) => {
+      const val = cell.toLowerCase().trim();
+      for (const k in ALIAS) {
+        if (m[k] === undefined && ALIAS[k].includes(val)) m[k] = ci;
+      }
+    });
+    if (Object.keys(m).length >= 1) { headIdx = i; colMap = m; break; }
+  }
+
+  const rows = headIdx >= 0 ? cleaned.slice(headIdx + 1) : cleaned;
+  return rows.map(r => {
+    const refRaw = colMap.refer !== undefined ? r[colMap.refer] : "";
+    return {
+      refer: refRaw ? refRaw.trim() : "ไม่ระบุ Refer",
+      name: colMap.name !== undefined ? r[colMap.name] : (r[0] || ""),
+      phone: colMap.phone !== undefined ? normPhone(r[colMap.phone]) : "",
+      company: colMap.company !== undefined ? r[colMap.company] : "",
+      group: colMap.group !== undefined ? r[colMap.group] : ""
+    };
+  }).filter(g => g.name || g.phone || g.company);
+}
+
+/* ============ 5. Compare Logic ============ */
+function recompute() {
+  if (!excelGuests.length) {
+    comparisonResult = [];
+    updateCounts();
+    renderReferTabs();
+    renderEmpty("กรุณาเลือกไฟล์ Excel เพื่อเริ่มการตรวจสอบ");
+    return;
+  }
+
+  const matchMode = document.getElementById("matchKey").value;
+  const getKey = item => {
+    if (!item) return "";
+    if (matchMode === "phone") return normPhone(item.phone);
+    if (matchMode === "name") return normText(item.name);
+    if (matchMode === "company") return normText(item.company);
+    return "";
+  };
+
+  const checkedInList = rtdbGuests.filter(g => g.checkedIn);
+  const checkedInMap = new Map();
+  checkedInList.forEach(g => {
+    const k = getKey(g);
+    if (k) checkedInMap.set(k, g);
+  });
+
+  const matchedSet = new Set();
+  const list = [];
+
+  excelGuests.forEach(ref => {
+    const k = getKey(ref);
+    const fbItem = k ? checkedInMap.get(k) : null;
+
+    if (fbItem) {
+      matchedSet.add(fbItem.id);
+      list.push({
+        status: "matched",
+        refer: ref.refer,
+        excel: ref,
+        firebase: fbItem
+      });
+    } else {
+      list.push({
+        status: "missing",
+        refer: ref.refer,
+        excel: ref,
+        firebase: null
+      });
+    }
+  });
+
+  // นอก Refer / Walk-in
+  checkedInList.forEach(fbItem => {
+    if (!matchedSet.has(fbItem.id)) {
+      list.push({
+        status: "extra",
+        refer: "นอก Refer (Walk-in)",
+        excel: null,
+        firebase: fbItem
+      });
+    }
+  });
+
+  comparisonResult = list;
+  renderReferTabs();
+  updateCounts();
+  renderTable();
+}
+
+/* ============ 6. Render UI ============ */
+function renderReferTabs() {
+  const tabsContainer = document.getElementById("referTabs");
+  const referCounts = {};
+  comparisonResult.forEach(item => {
+    const r = item.refer || "ไม่ระบุ Refer";
+    referCounts[r] = (referCounts[r] || 0) + 1;
+  });
+
+  const sortedRefers = Object.keys(referCounts).sort((a,b) => a.localeCompare(b, "th"));
+  let html = `<button class="tab" data-refer="__ALL__" aria-selected="${selectedRefer === '__ALL__'}">ทั้งหมด (${comparisonResult.length})</button>`;
+  
+  sortedRefers.forEach(r => {
+    const count = referCounts[r];
+    const isSel = selectedRefer === r;
+    html += `<button class="tab" data-refer="${esc(r)}" aria-selected="${isSel}">${esc(r)} (${count})</button>`;
+  });
+
+  tabsContainer.innerHTML = html;
+
+  tabsContainer.querySelectorAll(".tab").forEach(btn => {
+    btn.onclick = () => {
+      selectedRefer = btn.dataset.refer;
+      tabsContainer.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", "false"));
+      btn.setAttribute("aria-selected", "true");
+      renderTable();
+    };
+  });
+}
+
+function updateCounts() {
+  const nRefer = excelGuests.length;
+  const nMatched = comparisonResult.filter(x => x.status === "matched").length;
+  const nMissing = comparisonResult.filter(x => x.status === "missing").length;
+  const nExtra = comparisonResult.filter(x => x.status === "extra").length;
+
+  document.getElementById("stRefer").textContent = nRefer;
+  document.getElementById("stMatched").textContent = nMatched;
+  document.getElementById("stMissing").textContent = nMissing;
+  document.getElementById("stExtra").textContent = nExtra;
+}
+
+function renderTable() {
+  const tbody = document.getElementById("tbBody");
+
+  const filtered = comparisonResult.filter(row => {
+    if (selectedRefer !== "__ALL__" && row.refer !== selectedRefer) return false;
+    if (selectedStatus !== "all" && row.status !== selectedStatus) return false;
+
+    if (searchTerm) {
+      const allText = [
+        row.refer,
+        row.excel?.name, row.excel?.phone, row.excel?.company,
+        row.firebase?.name, row.firebase?.phone, row.firebase?.company
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (!allText.includes(searchTerm.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--mute);">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    let tag = "";
+    if (r.status === "matched") tag = `<span class="tag matched">✓ Check in แล้ว</span>`;
+    else if (r.status === "missing") tag = `<span class="tag missing">ยังไม่มา</span>`;
+    else if (r.status === "extra") tag = `<span class="tag extra">+ Walk-in</span>`;
+
+    const referPill = `<span class="tag refer-pill">${esc(r.refer)}</span>`;
+    const nameExcel = r.excel?.name || "-";
+    const nameFB = r.firebase?.name || "-";
+    const phone = r.firebase?.phone || r.excel?.phone || "-";
+    const company = r.firebase?.company || r.excel?.company || "-";
+    const group = r.firebase?.group || r.excel?.group || "-";
+    const time = r.firebase?.checkedInAt ? fmtTime(r.firebase.checkedInAt) : "-";
+
+    return `<tr>
+      <td>${tag}</td>
+      <td>${referPill}</td>
+      <td><b>${esc(nameExcel)}</b></td>
+      <td>${esc(nameFB)}</td>
+      <td>${esc(phone)}</td>
+      <td>${esc(company)}</td>
+      <td>${esc(group)}</td>
+      <td>${esc(time)}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderEmpty(msg) {
+  document.getElementById("tbBody").innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--mute);">${msg}</td></tr>`;
+}
+
+/* ============ Event Handlers ============ */
+document.getElementById("matchKey").onchange = recompute;
+
+document.getElementById("statusFilter").onchange = e => {
+  selectedStatus = e.target.value;
+  renderTable();
+};
+
+document.getElementById("txtSearch").oninput = e => {
+  searchTerm = e.target.value.trim();
+  renderTable();
+};
+
+/* ============ Export Excel ============ */
+document.getElementById("btnExport").onclick = () => {
+  if (!comparisonResult.length) return alert("ไม่มีข้อมูลสำหรับส่งออก");
+
+  const wb = XLSX.utils.book_new();
+  const formatList = list => list.map(r => ({
+    "สถานะ": r.status === "matched" ? "เช็คอินแล้ว" : r.status === "missing" ? "ยังไม่เช็คอิน" : "นอก Refer",
+    "Refer": r.refer || "",
+    "ชื่อ (Excel)": r.excel?.name || "",
+    "ชื่อ (Firebase)": r.firebase?.name || "",
+    "เบอร์โทรศัพท์": r.firebase?.phone || r.excel?.phone || "",
+    "บริษัท": r.firebase?.company || r.excel?.company || "",
+    "กลุ่มธุรกิจ": r.firebase?.group || r.excel?.group || "",
+    "เวลาเช็คอิน": r.firebase?.checkedInAt ? new Date(r.firebase.checkedInAt).toLocaleString("th-TH") : ""
+  }));
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(formatList(comparisonResult)), "รวมทุก Refer");
+
+  const groups = {};
+  comparisonResult.forEach(item => {
+    const k = (item.refer || "ไม่ระบุ").slice(0, 30);
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(item);
+  });
+
+  Object.keys(groups).forEach(grpName => {
+    const safeSheetName = grpName.replace(/[:\\/?*\[\]]/g, "_").slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(formatList(groups[grpName])), safeSheetName);
+  });
+
+  XLSX.writeFile(wb, `refer_summary_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
+</script>
+</body>
+</html>
